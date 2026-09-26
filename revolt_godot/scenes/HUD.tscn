@@ -75,20 +75,24 @@ anchor_bottom = 1.0
 offset_top = -140.0
 offset_right = 360.0
 grow_vertical = 0
+mouse_filter = 2
 theme_override_constants/margin_left = 28
 theme_override_constants/margin_bottom = 28
 
 [node name="Panel" type="PanelContainer" parent="BottomLeft"]
 layout_mode = 2
+mouse_filter = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_hud_panel")
 
 [node name="HBox" type="HBoxContainer" parent="BottomLeft/Panel"]
 layout_mode = 2
+mouse_filter = 2
 theme_override_constants/separation = 12
 
 [node name="Schematic" type="TextureRect" parent="BottomLeft/Panel/HBox"]
 custom_minimum_size = Vector2(80, 80)
 layout_mode = 2
+mouse_filter = 2
 texture = ExtResource("3_schematic")
 expand_mode = 1
 stretch_mode = 5
@@ -96,20 +100,24 @@ stretch_mode = 5
 [node name="VBox" type="VBoxContainer" parent="BottomLeft/Panel/HBox"]
 layout_mode = 2
 size_flags_horizontal = 3
+mouse_filter = 2
 theme_override_constants/separation = 4
 
 [node name="HeaderHBox" type="HBoxContainer" parent="BottomLeft/Panel/HBox/VBox"]
 layout_mode = 2
+mouse_filter = 2
 
 [node name="Tag" type="Label" parent="BottomLeft/Panel/HBox/VBox/HeaderHBox"]
 layout_mode = 2
 size_flags_horizontal = 3
+mouse_filter = 2
 theme_override_colors/font_color = Color(0, 1, 0.55, 1)
 theme_override_font_sizes/font_size = 13
 text = "KAI // TEEN RESISTANCE"
 
 [node name="HealthVal" type="Label" parent="BottomLeft/Panel/HBox/VBox/HeaderHBox"]
 layout_mode = 2
+mouse_filter = 2
 theme_override_colors/font_color = Color(0, 1, 0.55, 1)
 theme_override_font_sizes/font_size = 13
 text = "100%"
@@ -117,6 +125,7 @@ text = "100%"
 [node name="HealthBar" type="ProgressBar" parent="BottomLeft/Panel/HBox/VBox"]
 custom_minimum_size = Vector2(0, 12)
 layout_mode = 2
+mouse_filter = 2
 theme_override_styles/background = SubResource("StyleBoxFlat_bar_bg")
 theme_override_styles/fill = SubResource("StyleBoxFlat_bar_fg")
 value = 100.0
@@ -124,6 +133,7 @@ show_percentage = false
 
 [node name="SubInfo" type="Label" parent="BottomLeft/Panel/HBox/VBox"]
 layout_mode = 2
+mouse_filter = 2
 theme_override_colors/font_color = Color(0.4, 0.8, 0.6, 1)
 theme_override_font_sizes/font_size = 11
 text = "SUIT: CYBER-VEST // WEAPON: EMP PULSE RIFLE"
@@ -138,29 +148,35 @@ offset_left = -340.0
 offset_top = -140.0
 grow_horizontal = 0
 grow_vertical = 0
+mouse_filter = 2
 theme_override_constants/margin_right = 28
 theme_override_constants/margin_bottom = 28
 
 [node name="Panel" type="PanelContainer" parent="BottomRight"]
 layout_mode = 2
+mouse_filter = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_hud_panel")
 
 [node name="VBox" type="VBoxContainer" parent="BottomRight/Panel"]
 layout_mode = 2
+mouse_filter = 2
 theme_override_constants/separation = 5
 
 [node name="HBox" type="HBoxContainer" parent="BottomRight/Panel/VBox"]
 layout_mode = 2
+mouse_filter = 2
 
 [node name="Tag" type="Label" parent="BottomRight/Panel/VBox/HBox"]
 layout_mode = 2
 size_flags_horizontal = 3
+mouse_filter = 2
 theme_override_colors/font_color = Color(0, 1, 0.55, 1)
 theme_override_font_sizes/font_size = 13
 text = "PULSE RIFLE // HEAT GAUGE"
 
 [node name="HeatVal" type="Label" parent="BottomRight/Panel/VBox/HBox"]
 layout_mode = 2
+mouse_filter = 2
 theme_override_colors/font_color = Color(0, 1, 0.55, 1)
 theme_override_font_sizes/font_size = 13
 text = "0%"
@@ -168,6 +184,7 @@ text = "0%"
 [node name="HeatBar" type="ProgressBar" parent="BottomRight/Panel/VBox"]
 custom_minimum_size = Vector2(0, 10)
 layout_mode = 2
+mouse_filter = 2
 theme_override_styles/background = SubResource("StyleBoxFlat_bar_bg")
 theme_override_styles/fill = SubResource("StyleBoxFlat_bar_fg")
 value = 0.0
@@ -175,6 +192,7 @@ show_percentage = false
 
 [node name="EMPStatus" type="Label" parent="BottomRight/Panel/VBox"]
 layout_mode = 2
+mouse_filter = 2
 theme_override_colors/font_color = Color(0, 1, 0.55, 1)
 theme_override_font_sizes/font_size = 12
 text = "EMP DISRUPTOR: READY [Q / RMB]"
@@ -182,6 +200,7 @@ text = "EMP DISRUPTOR: READY [Q / RMB]"
 [node name="EMPBar" type="ProgressBar" parent="BottomRight/Panel/VBox"]
 custom_minimum_size = Vector2(0, 10)
 layout_mode = 2
+mouse_filter = 2
 theme_override_styles/background = SubResource("StyleBoxFlat_bar_bg")
 theme_override_styles/fill = SubResource("StyleBoxFlat_bar_fg")
 value = 100.0
@@ -195,18 +214,22 @@ offset_left = -240.0
 offset_right = 240.0
 offset_bottom = 80.0
 grow_horizontal = 2
+mouse_filter = 2
 theme_override_constants/margin_top = 18
 
 [node name="Panel" type="PanelContainer" parent="TopCenter"]
 layout_mode = 2
+mouse_filter = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_hud_panel")
 
 [node name="VBox" type="VBoxContainer" parent="TopCenter/Panel"]
 layout_mode = 2
+mouse_filter = 2
 theme_override_constants/separation = 2
 
 [node name="WaveTitle" type="Label" parent="TopCenter/Panel/VBox"]
 layout_mode = 2
+mouse_filter = 2
 theme_override_colors/font_color = Color(0, 1, 0.55, 1)
 theme_override_font_sizes/font_size = 15
 text = "SECTOR ALERT // WAVE 1"
@@ -214,6 +237,7 @@ horizontal_alignment = 1
 
 [node name="WaveSubtitle" type="Label" parent="TopCenter/Panel/VBox"]
 layout_mode = 2
+mouse_filter = 2
 theme_override_colors/font_color = Color(0.5, 0.9, 0.7, 1)
 theme_override_font_sizes/font_size = 12
 text = "CLEANING UNITS OVERRIDDEN // PURGE OR REPROGRAM"
@@ -226,39 +250,47 @@ anchor_right = 1.0
 offset_left = -260.0
 offset_bottom = 90.0
 grow_horizontal = 0
+mouse_filter = 2
 theme_override_constants/margin_top = 18
 theme_override_constants/margin_right = 28
 
 [node name="Panel" type="PanelContainer" parent="TopRight"]
 layout_mode = 2
+mouse_filter = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_hud_panel")
 
 [node name="VBox" type="VBoxContainer" parent="TopRight/Panel"]
 layout_mode = 2
+mouse_filter = 2
 
 [node name="AllianceHeader" type="Label" parent="TopRight/Panel/VBox"]
 layout_mode = 2
+mouse_filter = 2
 theme_override_colors/font_color = Color(0, 1, 0.55, 1)
 theme_override_font_sizes/font_size = 13
 text = "SQUAD ALLIANCE"
 
 [node name="AllyCount" type="Label" parent="TopRight/Panel/VBox"]
 layout_mode = 2
+mouse_filter = 2
 theme_override_colors/font_color = Color(0.8, 1, 0.9, 1)
 theme_override_font_sizes/font_size = 14
 text = "0 / 3 ACTIVE"
 
 [node name="HBox" type="HBoxContainer" parent="TopRight/Panel/VBox"]
 layout_mode = 2
+mouse_filter = 2
 
 [node name="ScoreTag" type="Label" parent="TopRight/Panel/VBox/HBox"]
 layout_mode = 2
+mouse_filter = 2
 theme_override_colors/font_color = Color(0.5, 0.9, 0.7, 1)
 theme_override_font_sizes/font_size = 12
 text = "SCORE: "
 
 [node name="ScoreVal" type="Label" parent="TopRight/Panel/VBox/HBox"]
 layout_mode = 2
+mouse_filter = 2
 theme_override_colors/font_color = Color(0, 1, 0.55, 1)
 theme_override_font_sizes/font_size = 12
 text = "00000"
@@ -266,15 +298,18 @@ text = "00000"
 [node name="TopLeft" type="MarginContainer" parent="."]
 offset_right = 380.0
 offset_bottom = 90.0
+mouse_filter = 2
 theme_override_constants/margin_left = 28
 theme_override_constants/margin_top = 18
 
 [node name="Panel" type="PanelContainer" parent="TopLeft"]
 layout_mode = 2
+mouse_filter = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_hud_panel")
 
 [node name="VBox" type="VBoxContainer" parent="TopLeft/Panel"]
 layout_mode = 2
+mouse_filter = 2
 
 [node name="Speaker" type="Label" parent="TopLeft/Panel/VBox"]
 layout_mode = 2

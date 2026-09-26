@@ -21,6 +21,13 @@ func _ready() -> void:
 		_start_gameplay()
 	else:
 		_show_story_intro()
+		
+	if OS.get_cmdline_user_args().has("--capture-screenshot"):
+		get_tree().create_timer(1.2).timeout.connect(func():
+			var img = get_viewport().get_texture().get_image()
+			img.save_png("res://screenshot_verified.png")
+			get_tree().quit()
+		)
 
 func _setup_environment() -> void:
 	world_env = WorldEnvironment.new()
@@ -114,40 +121,37 @@ func _start_wave(wave_num: int) -> void:
 	
 	match wave_num:
 		1:
-			subtitle = "ROGUE BATTLE DROIDS // PURGE OR REPROGRAM"
-			comms_msg = "Kai! Malfunctioning robots have overrun the open testing grounds! Stun them with your EMP [Q] and hold [E] to reprogram!"
-			hud.set_wave(1, "OPEN SECTOR // WAVE 1", subtitle)
-			hud.show_comms("MAYA // TACTICAL OVERRIDE", comms_msg, 7.0)
-			_spawn_wave_enemies(4, 0, false)
+			subtitle = "COLOSSAL GOLIATH ENFORCER // 1 TITAN DETECTED"
+			comms_msg = "Kai! A massive 6-meter Goliath Enforcer has broken through! Use cargo containers for cover, stun its reactor with EMP [Q], and reprogram it [E]!"
+			hud.set_wave(1, "SECTOR ALERT // WAVE 1", subtitle)
+			hud.show_comms("MAYA // TACTICAL OVERRIDE", comms_msg, 7.5)
+			# Wave 1: Exactly 1 Giant Enforcer Titan (intense 1v1 battle)
+			_spawn_wave_enemies(1, 0, false)
 		2:
-			subtitle = "HEAVY BRUISER ENFORCERS // REPROGRAM FOR FIRE SUPPORT"
-			comms_msg = "Heavy bruiser mechs inbound across the courtyard! Use cargo containers for cover and recruit an ally squad!"
-			hud.set_wave(2, "OPEN SECTOR // WAVE 2", subtitle)
-			hud.show_comms("JAX // HEAVY MUNITIONS", comms_msg, 7.0)
-			_spawn_wave_enemies(4, 2, false)
+			subtitle = "TWIN HEAVY BRUISER TITANS // 2 HOSTILES INBOUND"
+			comms_msg = "Two Heavy Siege Titans are advancing across the testing grounds! Reprogram one to turn its heavy Gatling cannons against the other!"
+			hud.set_wave(2, "SECTOR ALERT // WAVE 2", subtitle)
+			hud.show_comms("JAX // HEAVY MUNITIONS", comms_msg, 7.5)
+			# Wave 2: Exactly 2 Heavy Titans (2 at a time)
+			_spawn_wave_enemies(0, 2, false)
 		3:
-			subtitle = "TITAN OMEGA-ZERO // MASSIVE THREAT DETECTED!"
-			comms_msg = "CRITICAL ALERT! Omega-Zero has breached the open sector! Coordinate fire with your allied robot squad!"
+			subtitle = "TITAN OMEGA-ZERO // 10-METER FLAGSHIP COLOSSUS"
+			comms_msg = "CRITICAL ALERT! Flagship prototype OMEGA-ZERO has entered the arena! Stand your ground, dodge its missile barrage, and purge it!"
 			hud.set_wave(3, "CRITICAL ALERT // WAVE 3", subtitle)
-			hud.show_comms("MAYA // EMERGENCY", comms_msg, 8.0)
-			_spawn_wave_enemies(3, 2, true)
+			hud.show_comms("MAYA // EMERGENCY", comms_msg, 8.5)
+			# Wave 3: Exactly 1 Apex Titan Boss
+			_spawn_wave_enemies(0, 0, true)
 
 func _spawn_wave_enemies(grunts: int, bruisers: int, has_boss: bool) -> void:
 	enemies_remaining = grunts + bruisers + (1 if has_boss else 0)
 	var enemy_script = load("res://scripts/enemy_mech.gd")
 	
+	# Spawn points strategically distanced across the open arena
 	var spawn_points = [
-		Vector3(-25, 0.5, -25),
-		Vector3(25, 0.5, -25),
-		Vector3(0, 0.5, -30),
-		Vector3(-28, 0.5, 0),
-		Vector3(28, 0.5, 0),
-		Vector3(-18, 0.5, -15),
-		Vector3(18, 0.5, -15),
-		Vector3(-10, 0.5, -22),
-		Vector3(10, 0.5, -22)
+		Vector3(0, 0.5, -28),
+		Vector3(-22, 0.5, -20),
+		Vector3(22, 0.5, -20)
 	]
-	spawn_points.shuffle()
 	
 	var sp_idx = 0
 	for i in range(grunts):
@@ -155,7 +159,7 @@ func _spawn_wave_enemies(grunts: int, bruisers: int, has_boss: bool) -> void:
 		bot.set_script(enemy_script)
 		bot.bot_type = "grunt"
 		add_child(bot)
-		bot.global_position = spawn_points[sp_idx % spawn_points.size()]
+		bot.global_position = spawn_points[sp_idx]
 		sp_idx += 1
 		
 	for i in range(bruisers):
@@ -163,7 +167,7 @@ func _spawn_wave_enemies(grunts: int, bruisers: int, has_boss: bool) -> void:
 		bot.set_script(enemy_script)
 		bot.bot_type = "bruiser"
 		add_child(bot)
-		bot.global_position = spawn_points[sp_idx % spawn_points.size()]
+		bot.global_position = spawn_points[sp_idx]
 		sp_idx += 1
 		
 	if has_boss:
@@ -171,14 +175,14 @@ func _spawn_wave_enemies(grunts: int, bruisers: int, has_boss: bool) -> void:
 		boss.set_script(enemy_script)
 		boss.bot_type = "boss"
 		add_child(boss)
-		boss.global_position = Vector3(0, 0.5, -12)
+		boss.global_position = Vector3(0, 0.5, -26)
 
 func on_enemy_destroyed(bot_type: String) -> void:
 	enemies_remaining = max(0, enemies_remaining - 1)
 	match bot_type:
-		"grunt": score += 100
-		"bruiser": score += 250
-		"boss": score += 1500
+		"grunt": score += 250
+		"bruiser": score += 500
+		"boss": score += 2500
 		
 	hud.update_score(score)
 	_check_wave_cleared()

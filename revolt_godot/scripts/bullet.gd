@@ -1,44 +1,45 @@
 extends Area3D
 
-# High-Velocity Plasma/Autocannon Projectile
+# High-Energy Plasma & Kinetic Projectile
+# Features luminous glow, tracer trail, dynamic light, and fiery impact bursts.
 
-var speed: float = 60.0
-var damage: float = 18.0
+var speed: float = 65.0
+var damage: float = 24.0
 var team: String = "player" # "player", "ally", "enemy"
-var lifetime: float = 3.0
+var lifetime: float = 3.5
 var direction: Vector3 = Vector3.FORWARD
 
 func _ready() -> void:
 	body_entered.connect(_on_body_entered)
 	
-	# Visual tracer mesh
+	# High-Luminance Plasma Tracer
 	var mesh_inst = MeshInstance3D.new()
 	var cap = CapsuleMesh.new()
-	cap.radius = 0.08
-	cap.height = 0.7
+	cap.radius = 0.12 if team == "player" else 0.18
+	cap.height = 1.0 if team == "player" else 1.4
 	mesh_inst.mesh = cap
 	mesh_inst.rotation_degrees.x = 90
 	
 	var mat = StandardMaterial3D.new()
-	var col = Color(0.1, 0.9, 1.0) if (team == "player" or team == "ally") else Color(1.0, 0.3, 0.1)
+	var col = Color(0.0, 0.95, 1.0) if (team == "player" or team == "ally") else Color(1.0, 0.25, 0.05)
 	mat.albedo_color = col
 	mat.emission_enabled = true
 	mat.emission = col
-	mat.emission_energy_multiplier = 6.0
+	mat.emission_energy_multiplier = 2.5
 	mesh_inst.material_override = mat
 	add_child(mesh_inst)
 	
-	# Light
+	# Dynamic Projectile Light
 	var light = OmniLight3D.new()
 	light.light_color = col
-	light.light_energy = 1.5
-	light.omni_range = 3.0
+	light.light_energy = 2.2
+	light.omni_range = 6.0
 	add_child(light)
 	
-	# Collision shape
+	# Collision Shape
 	var col_shape = CollisionShape3D.new()
 	var sphere = SphereShape3D.new()
-	sphere.radius = 0.25
+	sphere.radius = 0.35
 	col_shape.shape = sphere
 	add_child(col_shape)
 
@@ -54,31 +55,41 @@ func _on_body_entered(body: Node3D) -> void:
 		if target_team != team:
 			body.take_damage(damage, global_position)
 			AudioManager.play_hit()
-			_spawn_hit_sparks()
+			_spawn_impact_burst()
 			queue_free()
 			return
 			
-	# If hit world/wall
 	if not (body.has_method("take_damage") and body.get("team") == team):
-		_spawn_hit_sparks()
+		_spawn_impact_burst()
 		queue_free()
 
-func _spawn_hit_sparks() -> void:
-	# Small spark particle burst
-	var particles = CPUParticles3D.new()
-	particles.emitting = true
-	particles.one_shot = true
-	particles.explosiveness = 1.0
-	particles.amount = 12
-	particles.lifetime = 0.3
-	particles.direction = -direction
-	particles.spread = 60.0
-	particles.initial_velocity_min = 4.0
-	particles.initial_velocity_max = 8.0
-	particles.gravity = Vector3(0, -9.8, 0)
-	particles.color = Color(1.0, 0.8, 0.2)
-	get_parent().add_child(particles)
-	particles.global_position = global_position
+func _spawn_impact_burst() -> void:
+	# Multi-stage spark and dust impact burst
+	var p = CPUParticles3D.new()
+	p.emitting = true
+	p.one_shot = true
+	p.explosiveness = 1.0
+	p.amount = 20
+	p.lifetime = 0.4
+	p.direction = -direction
+	p.spread = 70.0
+	p.initial_velocity_min = 5.0
+	p.initial_velocity_max = 12.0
+	p.gravity = Vector3(0, -9.8, 0)
+	var col = Color(0.2, 0.9, 1.0) if (team == "player" or team == "ally") else Color(1.0, 0.6, 0.1)
+	p.color = col
+	get_parent().add_child(p)
+	p.global_position = global_position
 	
-	# Free particles after burst
-	get_tree().create_timer(0.4).timeout.connect(particles.queue_free)
+	# Small impact light flash
+	var flash = OmniLight3D.new()
+	flash.light_color = col
+	flash.light_energy = 3.5
+	flash.omni_range = 7.0
+	get_parent().add_child(flash)
+	flash.global_position = global_position
+	
+	var tween = create_tween()
+	tween.tween_property(flash, "light_energy", 0.0, 0.25)
+	tween.tween_callback(flash.queue_free)
+	get_tree().create_timer(0.45).timeout.connect(p.queue_free)
