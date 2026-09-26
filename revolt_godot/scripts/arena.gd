@@ -87,21 +87,16 @@ func _build_tactical_cover() -> void:
 		[Vector3(28.5, 3.8, -19), Vector3(0, -5, 0), Vector3(6.0, 2.4, 2.6)], # Stacked tier 2
 		[Vector3(38, 1.3, -8), Vector3(0, -45, 0), Vector3(6.5, 2.6, 2.8)],
 		
-		# North advance staging area
-		[Vector3(-18, 1.3, -42), Vector3(0, 15, 0), Vector3(7.0, 2.6, 2.8)],
-		[Vector3(18, 1.3, -42), Vector3(0, -15, 0), Vector3(7.0, 2.6, 2.8)],
-		[Vector3(0, 1.3, -48), Vector3(0, 90, 0), Vector3(6.5, 2.6, 2.8)],
-		[Vector3(0, 3.8, -48), Vector3(0, 90, 0), Vector3(6.0, 2.4, 2.6)], # Stacked
+		# Flank bunkers & tactical cover pods (leaving central 40m avenue open for intense fire fights)
+		[Vector3(-34, 1.3, -38), Vector3(0, 20, 0), Vector3(7.0, 2.6, 2.8)],
+		[Vector3(34, 1.3, -38), Vector3(0, -20, 0), Vector3(7.0, 2.6, 2.8)],
 		
-		# South staging area (Near player spawn)
-		[Vector3(-22, 1.3, 24), Vector3(0, -30, 0), Vector3(6.5, 2.6, 2.8)],
-		[Vector3(22, 1.3, 24), Vector3(0, 30, 0), Vector3(6.5, 2.6, 2.8)],
-		[Vector3(-14, 1.3, 38), Vector3(0, 10, 0), Vector3(6.5, 2.6, 2.8)],
-		[Vector3(14, 1.3, 38), Vector3(0, -10, 0), Vector3(6.5, 2.6, 2.8)],
+		# South flank cover
+		[Vector3(-28, 1.3, 26), Vector3(0, -30, 0), Vector3(6.5, 2.6, 2.8)],
+		[Vector3(28, 1.3, 26), Vector3(0, 30, 0), Vector3(6.5, 2.6, 2.8)],
 		
-		# Central proving plaza cover pods
-		[Vector3(-12, 1.3, -6), Vector3(0, 40, 0), Vector3(5.5, 2.6, 2.6)],
-		[Vector3(12, 1.3, -6), Vector3(0, -40, 0), Vector3(5.5, 2.6, 2.6)]
+		# Mid-field flank tactical bunkers
+		[Vector3(25, 1.3, -4), Vector3(0, -35, 0), Vector3(6.0, 2.6, 2.8)]
 	]
 	
 	for cfg in container_positions:
@@ -123,12 +118,12 @@ func _build_tactical_cover() -> void:
 		c_body.add_child(col)
 		add_child(c_body)
 		
-	# Low concrete blast barrier walls for ducking / crouching
+	# Low concrete blast barrier walls for flank cover (central 40m avenue remains completely open)
 	var barrier_coords = [
-		[Vector3(0, 0.9, -24), Vector3(0, 0, 0), Vector3(10.0, 1.8, 0.9)],
-		[Vector3(-16, 0.9, 8), Vector3(0, 45, 0), Vector3(7.0, 1.8, 0.9)],
-		[Vector3(16, 0.9, 8), Vector3(0, -45, 0), Vector3(7.0, 1.8, 0.9)],
-		[Vector3(0, 0.9, 14), Vector3(0, 0, 0), Vector3(8.0, 1.8, 0.9)]
+		[Vector3(-22, 0.9, -24), Vector3(0, 25, 0), Vector3(8.0, 1.8, 0.9)],
+		[Vector3(-20, 0.9, 8), Vector3(0, 45, 0), Vector3(7.0, 1.8, 0.9)],
+		[Vector3(20, 0.9, 8), Vector3(0, -45, 0), Vector3(7.0, 1.8, 0.9)],
+		[Vector3(22, 0.9, 14), Vector3(0, -25, 0), Vector3(8.0, 1.8, 0.9)]
 	]
 	for b_cfg in barrier_coords:
 		var b_body = StaticBody3D.new()

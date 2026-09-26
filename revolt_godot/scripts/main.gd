@@ -26,7 +26,11 @@ func _ready() -> void:
 		_show_story_intro()
 		
 	if all_args.has("--capture-screenshot"):
-		get_tree().create_timer(1.2).timeout.connect(func():
+		var delay = 2.0
+		for a in all_args:
+			if a.begins_with("--delay="):
+				delay = float(a.split("=")[1])
+		get_tree().create_timer(delay).timeout.connect(func():
 			var img = get_viewport().get_texture().get_image()
 			img.save_png("res://screenshot_verified.png")
 			get_tree().quit()
@@ -135,8 +139,13 @@ func _start_gameplay() -> void:
 	hud.update_allies(active_allies, max_allies)
 	hud.update_score(score)
 	
-	# Start Wave 1: Small Scout Droids
-	_start_wave(1)
+	# Start Wave (Defaults to 1, or can be set via --wave=N)
+	var start_w = 1
+	var all_args = OS.get_cmdline_args() + OS.get_cmdline_user_args()
+	for a in all_args:
+		if a.begins_with("--wave="):
+			start_w = int(a.split("=")[1])
+	_start_wave(start_w)
 
 func _on_player_health_changed(current: float, max_hp: float) -> void:
 	if is_instance_valid(hud):
@@ -152,19 +161,21 @@ func _start_wave(wave_num: int) -> void:
 	
 	match wave_num:
 		1:
-			subtitle = "RECON SCOUT INFILTRATION // 4 LIGHT UNITS DETECTED"
-			objective = "OBJECTIVE: ELIMINATE RECON SCOUTS [ 4 REMAINING ]"
+			subtitle = "RECON SCOUT INFILTRATION // 2 LIGHT UNITS DETECTED"
+			objective = "OBJECTIVE: ELIMINATE RECON SCOUTS [ 2 REMAINING ]"
 			comms_msg = "Kai! Sterling Labs recon scouts are infiltrating the testing grounds! They're fast and agile—switch between your [1] Pulse Rifle and [2] Shotgun to shred their plating!"
 			hud.set_wave(1, "SECTOR ALERT // WAVE 1", subtitle, objective)
 			hud.show_comms("MAYA // TACTICAL OVERRIDE", comms_msg, 7.5)
-			# Wave 1: 4 Small Scout Droids (Linear starting wave)
-			_spawn_wave_enemies(4, 0, 0, false)
+			AudioManager.play_voice_maya(1)
+			# Wave 1: 2 Agile Scout Mechs (Linear start, 1-2 robots at a time)
+			_spawn_wave_enemies(2, 0, 0, false)
 		2:
 			subtitle = "MEDIUM ASSAULT PATROL // 2 ENFORCERS INBOUND"
 			objective = "OBJECTIVE: PURGE OR REPROGRAM ENFORCERS [ 2 REMAINING ]"
 			comms_msg = "Two 4-meter Combat Enforcers are entering the plaza! They pack heavy Gatling guns—use your [Q] EMP Shockwave to stun one, then hold [E] to reprogram it!"
 			hud.set_wave(2, "SECTOR ALERT // WAVE 2", subtitle, objective)
 			hud.show_comms("MAYA // TACTICAL OVERRIDE", comms_msg, 7.5)
+			AudioManager.play_voice_maya(2)
 			# Wave 2: 2 Medium Enforcers
 			_spawn_wave_enemies(0, 2, 0, false)
 		3:
@@ -173,6 +184,7 @@ func _start_wave(wave_num: int) -> void:
 			comms_msg = "Heavy 7-meter Siege Titans deployed with reinforced armor! Pierce their hull with the [3] Ion Railgun and pop Overclock [F] for bullet-time evasion!"
 			hud.set_wave(3, "SECTOR ALERT // WAVE 3", subtitle, objective)
 			hud.show_comms("JAX // HEAVY MUNITIONS", comms_msg, 7.5)
+			AudioManager.play_voice_maya(3)
 			# Wave 3: 2 Heavy Siege Titans
 			_spawn_wave_enemies(0, 0, 2, false)
 		4:
@@ -181,6 +193,7 @@ func _start_wave(wave_num: int) -> void:
 			comms_msg = "CRITICAL ALERT! The Flagship Colossus OMEGA-ZERO has entered the arena! Stand your ground, unleash all firepower, and save the city!"
 			hud.set_wave(4, "CRITICAL ALERT // WAVE 4", subtitle, objective)
 			hud.show_comms("MAYA & JAX // EMERGENCY", comms_msg, 8.5)
+			AudioManager.play_voice_maya(4)
 			# Wave 4: Colossal Flagship Apex Boss
 			_spawn_wave_enemies(0, 0, 0, true)
 
@@ -189,13 +202,13 @@ func _spawn_wave_enemies(scouts: int, grunts: int, bruisers: int, has_boss: bool
 	total_wave_enemies = enemies_remaining
 	var enemy_script = load("res://scripts/enemy_mech.gd")
 	
-	# Spawn points strategically distanced across the expanded 150m arena
+	# Spawn points in open combat lanes with clear line-of-sight to the player
 	var spawn_points = [
-		Vector3(-24, 0.5, -42),
-		Vector3(24, 0.5, -42),
-		Vector3(-42, 0.5, -20),
-		Vector3(42, 0.5, -20),
-		Vector3(0, 0.5, -50)
+		Vector3(-10, 0.5, 2.0),
+		Vector3(10, 0.5, 2.0),
+		Vector3(-14, 0.5, -6.0),
+		Vector3(14, 0.5, -6.0),
+		Vector3(0, 0.5, -10.0)
 	]
 	
 	var sp_idx = 0
@@ -228,7 +241,8 @@ func _spawn_wave_enemies(scouts: int, grunts: int, bruisers: int, has_boss: bool
 		boss.set_script(enemy_script)
 		boss.bot_type = "boss"
 		add_child(boss)
-		boss.global_position = Vector3(0, 0.5, -48)
+		boss.global_position = Vector3(0, 0.5, -14.0)
+		AudioManager.play_voice_boss_intro()
 
 func on_enemy_destroyed(bot_type: String) -> void:
 	enemies_remaining = max(0, enemies_remaining - 1)

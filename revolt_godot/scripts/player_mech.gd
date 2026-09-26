@@ -77,7 +77,7 @@ var step_timer: float = 0.0
 var sway_offset: Vector2 = Vector2.ZERO
 
 # Camera
-var camera_pitch: float = 2.0
+var camera_pitch: float = -6.0
 var camera_yaw: float = 0.0
 var camera_shake: float = 0.0
 var target_fov: float = 74.0
@@ -389,6 +389,7 @@ func _activate_overclock() -> void:
 	overclock_cooldown = overclock_max_cooldown
 	Engine.time_scale = 0.42 # Bullet-Time matrix slow-motion
 	AudioManager.play_overclock()
+	AudioManager.play_voice_kai_overclock()
 	overclock_updated.emit(false, overclock_max_cooldown)
 	if overclock_particles: overclock_particles.emitting = true
 	camera_shake = 0.4
@@ -454,16 +455,13 @@ func _spawn_bullet(w_type: String, dmg: float, spread: Vector3) -> void:
 	var bullet_script = load("res://scripts/bullet.gd")
 	var bullet = Area3D.new()
 	bullet.set_script(bullet_script)
-	bullet.team = "player"
-	bullet.weapon_type = w_type
-	bullet.damage = dmg
 	
 	var aim_target = _get_aim_target()
 	var spawn_pos = muzzle_marker.global_position
 	var aim_dir = (aim_target - spawn_pos).normalized() + spread
 	aim_dir = aim_dir.normalized()
 	
-	bullet.direction = aim_dir
+	bullet.initialize_projectile(spawn_pos, aim_dir, "player", w_type, dmg)
 	get_parent().add_child(bullet)
 	bullet.global_position = spawn_pos
 
@@ -486,6 +484,7 @@ func _trigger_emp() -> void:
 	emp_cooldown = emp_max_cooldown
 	emp_cooldown_updated.emit(emp_cooldown, emp_max_cooldown)
 	AudioManager.play_emp()
+	AudioManager.play_voice_kai_emp()
 	camera_shake = 0.55
 	
 	var blast_mesh = MeshInstance3D.new()
@@ -548,6 +547,7 @@ func _process_reprogram(delta: float) -> void:
 
 func _convert_enemy_to_ally(enemy: Node3D) -> void:
 	AudioManager.play_reprogram()
+	AudioManager.play_voice_reprogrammed()
 	var spawn_pos = enemy.global_position
 	var b_type = enemy.get("bot_type")
 	enemy.queue_free()
@@ -580,6 +580,7 @@ func take_damage(amount: float, _hit_pos: Vector3 = Vector3.ZERO) -> void:
 			amount -= shield
 			shield = 0.0
 			AudioManager.play_shield_break()
+			AudioManager.play_voice_shield_low()
 		shield_changed.emit(shield, max_shield)
 		
 	if amount > 0.0:
@@ -601,14 +602,11 @@ func _update_camera(delta: float) -> void:
 	
 	if camera_shake > 0.0:
 		camera_shake = max(0.0, camera_shake - delta * 2.2)
-		var shake_offset = Vector3(
-			randf_range(-camera_shake, camera_shake) * 0.16,
-			randf_range(-camera_shake, camera_shake) * 0.16,
-			0
-		)
-		camera.position = shake_offset
+		camera.h_offset = randf_range(-camera_shake, camera_shake) * 0.16
+		camera.v_offset = randf_range(-camera_shake, camera_shake) * 0.16
 	else:
-		camera.position = Vector3.ZERO
+		camera.h_offset = 0.0
+		camera.v_offset = 0.0
 
 func _setup_camera() -> void:
 	camera_pivot = Node3D.new()
@@ -617,8 +615,9 @@ func _setup_camera() -> void:
 	add_child(camera_pivot)
 	
 	spring_arm = SpringArm3D.new()
-	spring_arm.spring_length = 3.8
-	spring_arm.margin = 0.2
+	spring_arm.spring_length = 3.6
+	spring_arm.margin = 0.15
+	spring_arm.add_excluded_object(get_rid())
 	camera_pivot.add_child(spring_arm)
 	
 	camera = Camera3D.new()
@@ -628,7 +627,7 @@ func _setup_camera() -> void:
 	spring_arm.add_child(camera)
 	
 	# Over Kai's right shoulder for classic OTS shooter perspective
-	spring_arm.position = Vector3(0.85, 0.35, 0)
+	spring_arm.position = Vector3(0.75, 0.45, 0)
 
 func _setup_collision() -> void:
 	var col = CollisionShape3D.new()
@@ -650,54 +649,56 @@ func _build_detailed_human_kai() -> void:
 	
 	var hair_mat = StandardMaterial3D.new()
 	hair_mat.albedo_color = Color(0.12, 0.14, 0.18)
-	hair_mat.roughness = 0.5
+	hair_mat.roughness = 0.45
 	
 	var jacket_mat = StandardMaterial3D.new()
-	jacket_mat.albedo_color = Color(0.18, 0.22, 0.28)
-	jacket_mat.metallic = 0.7
-	jacket_mat.roughness = 0.35
+	jacket_mat.albedo_texture = load("res://assets/kai_suit_pattern.png")
+	jacket_mat.metallic = 0.75
+	jacket_mat.roughness = 0.32
+	jacket_mat.uv1_scale = Vector3(2.0, 2.0, 2.0)
 	
 	var armor_mat = StandardMaterial3D.new()
-	armor_mat.albedo_color = Color(0.24, 0.28, 0.36)
-	armor_mat.metallic = 0.92
-	armor_mat.roughness = 0.25
+	armor_mat.albedo_color = Color(0.22, 0.26, 0.34)
+	armor_mat.metallic = 0.94
+	armor_mat.roughness = 0.22
 	
 	var cyber_chrome_mat = StandardMaterial3D.new()
-	cyber_chrome_mat.albedo_color = Color(0.75, 0.8, 0.85)
+	cyber_chrome_mat.albedo_color = Color(0.80, 0.85, 0.90)
 	cyber_chrome_mat.metallic = 0.98
-	cyber_chrome_mat.roughness = 0.15
+	cyber_chrome_mat.roughness = 0.12
 	
 	var cyan_neon_mat = StandardMaterial3D.new()
 	var neon_col = Color(0.0, 0.95, 1.0)
 	cyan_neon_mat.albedo_color = neon_col
 	cyan_neon_mat.emission_enabled = true
 	cyan_neon_mat.emission = neon_col
-	cyan_neon_mat.emission_energy_multiplier = 2.2
+	cyan_neon_mat.emission_energy_multiplier = 1.8
 	
 	var magenta_mat = StandardMaterial3D.new()
 	var mag_col = Color(0.85, 0.15, 1.0)
 	magenta_mat.albedo_color = mag_col
 	magenta_mat.emission_enabled = true
 	magenta_mat.emission = mag_col
-	magenta_mat.emission_energy_multiplier = 2.2
+	magenta_mat.emission_energy_multiplier = 2.0
 	
 	backpack_reactor_mat = StandardMaterial3D.new()
 	backpack_reactor_mat.albedo_color = neon_col
 	backpack_reactor_mat.emission_enabled = true
 	backpack_reactor_mat.emission = neon_col
-	backpack_reactor_mat.emission_energy_multiplier = 2.5
+	backpack_reactor_mat.emission_energy_multiplier = 1.8
 	
 	var pants_mat = StandardMaterial3D.new()
-	pants_mat.albedo_color = Color(0.14, 0.16, 0.20)
-	pants_mat.roughness = 0.65
+	pants_mat.albedo_texture = load("res://assets/kai_suit_pattern.png")
+	pants_mat.roughness = 0.55
+	pants_mat.uv1_scale = Vector3(1.5, 2.5, 1.5)
 	
 	var boots_mat = StandardMaterial3D.new()
-	boots_mat.albedo_color = Color(0.06, 0.08, 0.10)
-	boots_mat.metallic = 0.85
-	boots_mat.roughness = 0.25
+	boots_mat.albedo_color = Color(0.08, 0.10, 0.13)
+	boots_mat.metallic = 0.90
+	boots_mat.roughness = 0.20
 	
 	var weapon_steel_mat = StandardMaterial3D.new()
-	weapon_steel_mat.albedo_color = Color(0.18, 0.20, 0.24)
+	weapon_steel_mat.albedo_color = Color(0.16, 0.18, 0.22)
 	weapon_steel_mat.metallic = 0.96
 	weapon_steel_mat.roughness = 0.20
 
@@ -714,7 +715,7 @@ func _build_detailed_human_kai() -> void:
 	chest.material_override = jacket_mat
 	torso.add_child(chest)
 	
-	# Raised Jacket Collar
+	# High Tactical Collar
 	var collar = MeshInstance3D.new()
 	var col_box = BoxMesh.new()
 	col_box.size = Vector3(0.36, 0.14, 0.24)
@@ -723,7 +724,7 @@ func _build_detailed_human_kai() -> void:
 	collar.material_override = jacket_mat
 	torso.add_child(collar)
 	
-	# Front Segmented Ballistic Chest Plates
+	# Segmented Ballistic Chest Plates
 	var plate_u = MeshInstance3D.new()
 	var pu_box = BoxMesh.new()
 	pu_box.size = Vector3(0.42, 0.22, 0.08)
@@ -743,40 +744,58 @@ func _build_detailed_human_kai() -> void:
 	# Glowing Cyan Tactical Power Line on chest
 	var led_strip = MeshInstance3D.new()
 	var l_box = BoxMesh.new()
-	l_box.size = Vector3(0.32, 0.03, 0.02)
+	l_box.size = Vector3(0.32, 0.025, 0.02)
 	led_strip.mesh = l_box
 	led_strip.position = Vector3(0, 0.14, -0.19)
 	led_strip.material_override = cyan_neon_mat
 	torso.add_child(led_strip)
 	
+	# Tactical Utility Belt & Pouches
+	var belt = MeshInstance3D.new()
+	var b_box = BoxMesh.new()
+	b_box.size = Vector3(0.50, 0.07, 0.30)
+	belt.mesh = b_box
+	belt.position = Vector3(0, -0.24, 0)
+	belt.material_override = boots_mat
+	torso.add_child(belt)
+	
+	for px in [-0.22, 0.22]:
+		var pouch = MeshInstance3D.new()
+		var p_box = BoxMesh.new()
+		p_box.size = Vector3(0.08, 0.10, 0.12)
+		pouch.mesh = p_box
+		pouch.position = Vector3(px, -0.24, 0.05)
+		pouch.material_override = armor_mat
+		torso.add_child(pouch)
+	
 	# Shoulder Pauldrons
 	for side in [-1, 1]:
 		var pad = MeshInstance3D.new()
 		var p_box = BoxMesh.new()
-		p_box.size = Vector3(0.16, 0.18, 0.24)
+		p_box.size = Vector3(0.16, 0.16, 0.24)
 		pad.mesh = p_box
 		pad.position = Vector3(side * 0.28, 0.22, 0)
 		pad.material_override = armor_mat
 		torso.add_child(pad)
 		
-	# Back (+Z): High-Tech EMP Reactor Backpack
+	# Back (+Z): High-Tech EMP Reactor Module
 	var pack = MeshInstance3D.new()
 	var pack_box = BoxMesh.new()
-	pack_box.size = Vector3(0.34, 0.42, 0.14)
+	pack_box.size = Vector3(0.30, 0.36, 0.12)
 	pack.mesh = pack_box
-	pack.position = Vector3(0, 0.06, 0.18)
+	pack.position = Vector3(0, 0.06, 0.16)
 	pack.material_override = armor_mat
 	torso.add_child(pack)
 	
-	# Glowing EMP Reactor Core Cylinder
+	# Recessed Circular Reactor Core
 	var reactor_core = MeshInstance3D.new()
 	var rc_cyl = CylinderMesh.new()
-	rc_cyl.top_radius = 0.07
-	rc_cyl.bottom_radius = 0.07
-	rc_cyl.height = 0.28
+	rc_cyl.top_radius = 0.055
+	rc_cyl.bottom_radius = 0.055
+	rc_cyl.height = 0.08
 	reactor_core.mesh = rc_cyl
-	reactor_core.rotation_degrees.z = 90
-	reactor_core.position = Vector3(0, 0.06, 0.26)
+	reactor_core.rotation_degrees.x = 90
+	reactor_core.position = Vector3(0, 0.06, 0.23)
 	reactor_core.material_override = backpack_reactor_mat
 	torso.add_child(reactor_core)
 	
@@ -784,68 +803,71 @@ func _build_detailed_human_kai() -> void:
 	for y_off in [-0.08, 0.0, 0.08]:
 		var fin = MeshInstance3D.new()
 		var f_box = BoxMesh.new()
-		f_box.size = Vector3(0.26, 0.02, 0.06)
+		f_box.size = Vector3(0.24, 0.015, 0.04)
 		fin.mesh = f_box
-		fin.position = Vector3(0, y_off, 0.25)
+		fin.position = Vector3(0, y_off, 0.22)
 		fin.material_override = weapon_steel_mat
 		torso.add_child(fin)
 
-	# 2. Head, Cyber Visor & Layered Hair
+	# 2. Head, Cyber Visor & Layered Anime Hair
 	head = Node3D.new()
 	head.position = Vector3(0, 0.42, 0)
 	torso.add_child(head)
 	
 	var face = MeshInstance3D.new()
 	var f_sph = SphereMesh.new()
-	f_sph.radius = 0.14
-	f_sph.height = 0.30
+	f_sph.radius = 0.13
+	f_sph.height = 0.28
 	face.mesh = f_sph
 	face.position = Vector3(0, 0, -0.02)
 	face.material_override = skin_mat
 	head.add_child(face)
 	
-	# Hair: Covering crown and back (+Z) of head
-	var hair_back = MeshInstance3D.new()
-	var hb_box = BoxMesh.new()
-	hb_box.size = Vector3(0.34, 0.26, 0.22)
-	hair_back.mesh = hb_box
-	hair_back.position = Vector3(0, 0.04, 0.08)
-	hair_back.material_override = hair_mat
-	head.add_child(hair_back)
+	# Dynamic Layered Anime Spiky Hair
+	var hair_base = MeshInstance3D.new()
+	var hb_sph = SphereMesh.new()
+	hb_sph.radius = 0.14
+	hb_sph.height = 0.26
+	hair_base.mesh = hb_sph
+	hair_base.position = Vector3(0, 0.04, 0.03)
+	hair_base.material_override = hair_mat
+	head.add_child(hair_base)
 	
-	var hair_top = MeshInstance3D.new()
-	var ht_box = BoxMesh.new()
-	ht_box.size = Vector3(0.32, 0.14, 0.32)
-	hair_top.mesh = ht_box
-	hair_top.position = Vector3(0, 0.15, -0.01)
-	hair_top.material_override = hair_mat
-	head.add_child(hair_top)
+	# Stylized Spiky Locks
+	var spikes_data = [
+		[Vector3(0, 0.18, 0.04), Vector3(30, 0, 0), Vector3(0.14, 0.16, 0.22)],
+		[Vector3(-0.08, 0.16, 0.06), Vector3(25, -20, 0), Vector3(0.12, 0.14, 0.20)],
+		[Vector3(0.08, 0.16, 0.06), Vector3(25, 20, 0), Vector3(0.12, 0.14, 0.20)],
+		[Vector3(-0.12, 0.06, 0.05), Vector3(10, -35, 0), Vector3(0.10, 0.12, 0.18)],
+		[Vector3(0.12, 0.06, 0.05), Vector3(10, 35, 0), Vector3(0.10, 0.12, 0.18)],
+		[Vector3(0, 0.10, -0.12), Vector3(-20, 0, 0), Vector3(0.16, 0.10, 0.14)] # Front Bangs
+	]
 	
-	# Styled bangs fringe at forehead (-Z)
-	var hair_fringe = MeshInstance3D.new()
-	var hf_box = BoxMesh.new()
-	hf_box.size = Vector3(0.30, 0.12, 0.14)
-	hair_fringe.mesh = hf_box
-	hair_fringe.position = Vector3(0, 0.12, -0.14)
-	hair_fringe.rotation_degrees.x = 22
-	hair_fringe.material_override = hair_mat
-	head.add_child(hair_fringe)
+	for sd in spikes_data:
+		var spike = MeshInstance3D.new()
+		var p_mesh = PrismMesh.new()
+		p_mesh.size = sd[2]
+		spike.mesh = p_mesh
+		spike.position = sd[0]
+		spike.rotation_degrees = sd[1]
+		spike.material_override = hair_mat
+		head.add_child(spike)
 	
-	# Glowing Tactical Cyber Visor
+	# Glowing Tactical Cyber Scouter Visor
 	var visor = MeshInstance3D.new()
 	var v_box = BoxMesh.new()
-	v_box.size = Vector3(0.28, 0.06, 0.14)
+	v_box.size = Vector3(0.24, 0.05, 0.12)
 	visor.mesh = v_box
-	visor.position = Vector3(0, 0.02, -0.14)
+	visor.position = Vector3(0, 0.02, -0.13)
 	visor.material_override = cyan_neon_mat
 	head.add_child(visor)
 	
 	# Comms Headset with Boom Mic
 	var headset = MeshInstance3D.new()
 	var hs_box = BoxMesh.new()
-	hs_box.size = Vector3(0.06, 0.10, 0.10)
+	hs_box.size = Vector3(0.05, 0.09, 0.09)
 	headset.mesh = hs_box
-	headset.position = Vector3(-0.16, 0.02, -0.02)
+	headset.position = Vector3(-0.15, 0.02, -0.02)
 	headset.material_override = boots_mat
 	head.add_child(headset)
 

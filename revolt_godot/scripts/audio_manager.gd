@@ -85,6 +85,62 @@ func play_step() -> void:
 func play_alert() -> void:
 	play_sound(alert_stream, 0.0, 1.0)
 
+# Tactical Radio Comms & Robotic Voice Synthesizer
+var voice_cache: Dictionary = {}
+var current_voice_player: AudioStreamPlayer = null
+
+func play_voice(path: String, volume_db: float = 3.5) -> void:
+	if not voice_cache.has(path):
+		var res = load(path)
+		if res: voice_cache[path] = res
+	if not voice_cache.has(path): return
+	
+	if is_instance_valid(current_voice_player) and current_voice_player.playing:
+		current_voice_player.stop()
+		current_voice_player.queue_free()
+		
+	var vp = AudioStreamPlayer.new()
+	vp.stream = voice_cache[path]
+	vp.volume_db = volume_db
+	add_child(vp)
+	vp.play()
+	current_voice_player = vp
+	vp.finished.connect(func():
+		if is_instance_valid(vp):
+			vp.queue_free()
+	)
+
+func play_voice_maya(wave_num: int) -> void:
+	var file = "res://assets/audio/maya_wave" + str(clampi(wave_num, 1, 4)) + ".wav"
+	play_voice(file, 4.0)
+
+func play_voice_shield_low() -> void:
+	play_voice("res://assets/audio/maya_shield_low.wav", 4.0)
+
+func play_voice_reprogrammed() -> void:
+	play_voice("res://assets/audio/maya_reprogrammed.wav", 4.0)
+
+func play_voice_bot_target() -> void:
+	play_voice("res://assets/audio/bot_target.wav", 3.5)
+
+func play_voice_bot_fire() -> void:
+	play_voice("res://assets/audio/bot_fire.wav", 3.5)
+
+func play_voice_bot_damage() -> void:
+	play_voice("res://assets/audio/bot_damage.wav", 3.5)
+
+func play_voice_boss_intro() -> void:
+	play_voice("res://assets/audio/bot_boss_intro.wav", 5.0)
+
+func play_voice_kai_kill() -> void:
+	play_voice("res://assets/audio/kai_kill.wav", 3.5)
+
+func play_voice_kai_overclock() -> void:
+	play_voice("res://assets/audio/kai_overclock.wav", 3.5)
+
+func play_voice_kai_emp() -> void:
+	play_voice("res://assets/audio/kai_emp.wav", 3.5)
+
 # Sound Generators (Sample rate: 22050 Hz, 16-bit PCM)
 func _create_shoot_sound() -> AudioStreamWAV:
 	var sample_rate = 22050
