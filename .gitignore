@@ -1,0 +1,5 @@
+.legacy_basic_backup.tar.gz
+.venv/
+.import/
+*.import
+export_presets.cfg
