@@ -1,38 +1,39 @@
 extends CharacterBody3D
 
 # Rogue War Machine AI for REVOLT 2150 (Godot 4.7)
-# Linear Progression:
-# 1. "scout": Agile 1.9m reconnaissance droid (nimble, flanking, 3-round rapid blaster)
-# 2. "grunt": Medium 4.2m combat enforcer (heavy Gatlings, suppressive fire)
-# 3. "bruiser": Heavy 6.8m siege titan (heavy cannons, rocket pods, ground stomps)
-# 4. "boss": Colossal 11.5m Flagship Apex Titan OMEGA-ZERO (quad Gatlings, rocket volleys, boss health bar)
+# Dynamic combatant: active rhythmic shooting, feeler navigation around containers,
+# and spectacular cinematic death explosions with 100% clean object destruction.
 
 @export var bot_type: String = "scout" # "scout", "grunt", "bruiser", "boss"
 
-var max_health: float = 85.0
-var health: float = 85.0
-var speed: float = 7.2
-var fire_rate: float = 0.12
+var max_health: float = 160.0
+var health: float = 160.0
+var speed: float = 7.0
+var damage_per_shot: float = 7.0
+var attack_range: float = 48.0
+var preferred_dist: float = 14.0
+var team: String = "enemy"
+
+# Firing Cycle
 var burst_count: int = 0
 var max_burst: int = 3
-var burst_pause: float = 0.0
+var burst_pause: float = 0.5 # Fast initial engagement
+var shot_interval: float = 0.16
+var shot_timer: float = 0.0
 var is_spinning_up: bool = false
 var spinup_timer: float = 0.0
-var damage_per_shot: float = 6.0
-var attack_range: float = 35.0
-var preferred_dist: float = 12.0
-var team: String = "enemy"
 
 # State & AI
 var is_stunned: bool = false
 var stun_timer: float = 0.0
 var target: Node3D = null
 var walk_cycle: float = 0.0
-var step_interval: float = 0.38
+var step_interval: float = 0.36
 var step_timer: float = 0.0
 var flank_angle_offset: float = 0.0
 var strafe_direction: float = 1.0
 var strafe_timer: float = 0.0
+var is_dying: bool = false
 
 # Node References
 var torso: Node3D
@@ -40,10 +41,8 @@ var left_leg: Node3D
 var right_leg: Node3D
 var left_piston: Node3D
 var right_piston: Node3D
-var left_muzzle: Marker3D
-var right_muzzle: Marker3D
-var left_muzzle_light: OmniLight3D
-var right_muzzle_light: OmniLight3D
+var left_arm: Node3D
+var right_arm: Node3D
 var left_gatling_barrels: Node3D
 var right_gatling_barrels: Node3D
 var visor_mesh: MeshInstance3D
@@ -69,54 +68,60 @@ func _ready() -> void:
 func _configure_stats() -> void:
 	match bot_type:
 		"scout":
-			# Wave 1: Fast agile 1.9m reconnaissance droid
-			max_health = 85.0
+			# Wave 1: Agile reconnaissance runner
+			max_health = 160.0
 			speed = 7.2
-			damage_per_shot = 6.0
+			damage_per_shot = 7.0
 			scale = Vector3(1.15, 1.15, 1.15)
-			attack_range = 34.0
-			preferred_dist = 12.0
+			attack_range = 48.0
+			preferred_dist = 13.0
 			max_burst = 3
-			step_interval = 0.36
+			shot_interval = 0.16
+			step_interval = 0.35
 		"grunt":
-			# Wave 2: Medium 4.2m combat enforcer
-			max_health = 260.0
-			speed = 4.8
-			damage_per_shot = 9.0
+			# Wave 2: Medium combat enforcer
+			max_health = 380.0
+			speed = 5.0
+			damage_per_shot = 10.0
 			scale = Vector3(2.3, 2.3, 2.3)
-			attack_range = 44.0
+			attack_range = 52.0
 			preferred_dist = 17.0
 			max_burst = 6
-			step_interval = 0.55
+			shot_interval = 0.13
+			step_interval = 0.52
 		"bruiser":
-			# Wave 3: Heavy 6.8m siege titan
-			max_health = 520.0
+			# Wave 3: Heavy siege titan
+			max_health = 750.0
 			speed = 3.6
-			damage_per_shot = 15.0
+			damage_per_shot = 16.0
 			scale = Vector3(3.8, 3.8, 3.8)
-			attack_range = 50.0
-			preferred_dist = 21.0
+			attack_range = 58.0
+			preferred_dist = 20.0
 			max_burst = 8
-			step_interval = 0.72
+			shot_interval = 0.12
+			step_interval = 0.70
 		"boss":
-			# Wave 4: Colossal 11.5m Flagship Apex Titan OMEGA-ZERO
-			max_health = 1600.0
-			speed = 4.0
-			damage_per_shot = 18.0
+			# Wave 4: Colossal Flagship Apex Titan OMEGA-ZERO
+			max_health = 2200.0
+			speed = 4.2
+			damage_per_shot = 20.0
 			scale = Vector3(6.0, 6.0, 6.0)
-			attack_range = 65.0
-			preferred_dist = 24.0
-			max_burst = 12
+			attack_range = 75.0
+			preferred_dist = 22.0
+			max_burst = 14
+			shot_interval = 0.09
 			step_interval = 0.85
 	health = max_health
 
 func _physics_process(delta: float) -> void:
+	if is_dying: return
+	
 	if not is_on_floor():
 		velocity.y -= 25.0 * delta
 	else:
 		velocity.y = 0.0
 
-	# Process Stun State
+	# Process EMP Stun State
 	if is_stunned:
 		stun_timer -= delta
 		velocity.x = lerp(velocity.x, 0.0, 10.0 * delta)
@@ -143,23 +148,23 @@ func _physics_process(delta: float) -> void:
 		diff.y = 0
 		var dist = diff.length()
 		
-		# Aim smoothly at target
+		# Turn to face target
 		if diff.length() > 0.1:
 			var target_rot = atan2(diff.x, diff.z)
-			rotation.y = lerp_angle(rotation.y, target_rot, 4.0 * delta)
+			rotation.y = lerp_angle(rotation.y, target_rot, 5.0 * delta)
 			
-		# Smart Obstacle Avoidance Movement
+		# Tactical Strafing Timer
 		strafe_timer += delta
-		if strafe_timer >= 2.0:
+		if strafe_timer >= 2.2:
 			strafe_timer = 0.0
-			strafe_direction = -strafe_direction if randf() > 0.3 else strafe_direction
+			strafe_direction = -strafe_direction if randf() > 0.25 else strafe_direction
 			
 		var move_dir = _calculate_smart_movement(diff, dist, delta)
 		var target_vel = move_dir * speed
 		velocity.x = lerp(velocity.x, target_vel.x, 6.0 * delta)
 		velocity.z = lerp(velocity.z, target_vel.z, 6.0 * delta)
 		
-		# Hydraulic / Mechanical Walk Cycle
+		# Mechanical Walk Cycle
 		if move_dir.length() > 0.1:
 			walk_cycle += delta * (8.5 if bot_type == "scout" else 6.5)
 			var l_rot = sin(walk_cycle) * (20.0 if bot_type == "scout" else 26.0)
@@ -182,18 +187,18 @@ func _physics_process(delta: float) -> void:
 			right_leg.rotation_degrees.x = lerp(right_leg.rotation_degrees.x, 0.0, 6.0 * delta)
 			torso.position.y = lerp(torso.position.y, 1.35, 6.0 * delta)
 			
-		# Telegraphed Attack Sequence
+		# Active Combat Shooting
 		if burst_pause > 0.0:
 			burst_pause -= delta
 		elif dist <= attack_range:
-			_process_telegraphed_attack(delta)
+			_process_firing_cycle(delta)
 	else:
 		velocity.x = lerp(velocity.x, 0.0, 5.0 * delta)
 		velocity.z = lerp(velocity.z, 0.0, 5.0 * delta)
 		
 	move_and_slide()
 
-# Raycast Feeler Smart Navigation: Never gets stuck on containers or walls
+# Feeler Pathfinding: Smoothly routes around cargo containers and walls
 func _calculate_smart_movement(target_diff: Vector3, dist: float, _delta: float) -> Vector3:
 	var base_dir = Vector3.ZERO
 	var norm_diff = target_diff.normalized()
@@ -204,19 +209,18 @@ func _calculate_smart_movement(target_diff: Vector3, dist: float, _delta: float)
 	elif dist < preferred_dist - 2.5:
 		base_dir = (-norm_diff + strafe_vec * flank_angle_offset).normalized()
 	else:
-		base_dir = (strafe_vec * strafe_direction + norm_diff * 0.2).normalized()
+		base_dir = (strafe_vec * strafe_direction + norm_diff * 0.25).normalized()
 		
-	# Raycast Feeler Obstacle Check
+	# Raycast Feeler Check
 	var space_state = get_world_3d().direct_space_state
-	var start_pos = global_position + Vector3(0, 1.2 * scale.y, 0)
-	var feeler_dist = 4.0 * scale.y
+	var start_pos = global_position + Vector3(0, 1.0 * scale.y, 0)
+	var feeler_dist = 4.5 * scale.y
 	
 	var forward_query = PhysicsRayQueryParameters3D.create(start_pos, start_pos + base_dir * feeler_dist)
 	forward_query.exclude = [self]
 	var forward_hit = space_state.intersect_ray(forward_query)
 	
 	if forward_hit and not forward_hit.collider.is_in_group("player") and not forward_hit.collider.is_in_group("allies"):
-		# Blocked by obstacle (e.g. cargo container). Test 45-degree alternate paths
 		var right_dir = base_dir.rotated(Vector3.UP, deg_to_rad(-45)).normalized()
 		var left_dir = base_dir.rotated(Vector3.UP, deg_to_rad(45)).normalized()
 		
@@ -233,33 +237,58 @@ func _calculate_smart_movement(target_diff: Vector3, dist: float, _delta: float)
 		elif not left_hit:
 			base_dir = left_dir
 		else:
-			# If both blocked, steer sharp 90-degree around corner
 			base_dir = base_dir.rotated(Vector3.UP, deg_to_rad(90)).normalized()
 			
 	return base_dir
 
-func _process_telegraphed_attack(delta: float) -> void:
-	# Spin-Up Telegraph: Barrels spin and eye glows before firing
-	var spinup_time = 0.25 if bot_type == "scout" else 0.45
+func _process_firing_cycle(delta: float) -> void:
+	# 1. Telegraph Spin-up
+	var spinup_time = 0.22 if bot_type == "scout" else 0.40
 	if not is_spinning_up and burst_count == 0:
 		is_spinning_up = true
 		spinup_timer = spinup_time
-		if visor_mat: visor_mat.emission_energy_multiplier = 3.2
+		if visor_mat: visor_mat.emission_energy_multiplier = 3.5
 		
 	if is_spinning_up:
 		spinup_timer -= delta
-		if left_gatling_barrels: left_gatling_barrels.rotation_degrees.z += 800.0 * delta
-		if right_gatling_barrels: right_gatling_barrels.rotation_degrees.z += 800.0 * delta
+		if left_gatling_barrels: left_gatling_barrels.rotation_degrees.z += 900.0 * delta
+		if right_gatling_barrels: right_gatling_barrels.rotation_degrees.z += 900.0 * delta
 		if spinup_timer <= 0.0:
 			is_spinning_up = false
+			shot_timer = 0.0 # Fire immediately upon spin-up completion
 		return
 		
-	# Active Burst Firing
-	if left_gatling_barrels: left_gatling_barrels.rotation_degrees.z += 1400.0 * delta
-	if right_gatling_barrels: right_gatling_barrels.rotation_degrees.z += 1400.0 * delta
+	# 2. Paced Burst Firing (Shot by shot with proper delay)
+	if left_gatling_barrels: left_gatling_barrels.rotation_degrees.z += 1500.0 * delta
+	if right_gatling_barrels: right_gatling_barrels.rotation_degrees.z += 1500.0 * delta
 	
-	burst_count += 1
-	var pitch = 1.35 if bot_type == "scout" else (0.85 if bot_type == "grunt" else 0.60)
+	shot_timer -= delta
+	if shot_timer <= 0.0:
+		shot_timer = shot_interval
+		burst_count += 1
+		_fire_single_shot()
+		
+		if burst_count >= max_burst:
+			burst_count = 0
+			burst_pause = randf_range(1.2, 1.8) if bot_type == "scout" else randf_range(1.6, 2.4)
+			if visor_mat: visor_mat.emission_energy_multiplier = 1.4
+
+func _fire_single_shot() -> void:
+	if not is_instance_valid(target): return
+	
+	var is_left = (burst_count % 2 == 1)
+	var forward_dir = -global_transform.basis.z
+	var right_dir = global_transform.basis.x
+	
+	# Spawn bullet safely outside own collision capsule
+	var spawn_pos = global_position + Vector3(0, 1.2 * scale.y, 0) + forward_dir * (1.6 * scale.y)
+	spawn_pos += (right_dir * -0.7 * scale.y) if is_left else (right_dir * 0.7 * scale.y)
+	
+	var aim_dir = (target.global_position + Vector3(0, 1.0, 0) - spawn_pos).normalized()
+	aim_dir += Vector3(randf_range(-0.04, 0.04), randf_range(-0.03, 0.03), randf_range(-0.04, 0.04))
+	aim_dir = aim_dir.normalized()
+	
+	var pitch = 1.30 if bot_type == "scout" else (0.85 if bot_type == "grunt" else 0.60)
 	AudioManager.play_shoot(pitch)
 	
 	var bullet_script = load("res://scripts/bullet.gd")
@@ -268,41 +297,19 @@ func _process_telegraphed_attack(delta: float) -> void:
 	bullet.team = "enemy"
 	bullet.weapon_type = "enemy"
 	bullet.damage = damage_per_shot
-	
-	var is_left = (burst_count % 2 == 0)
-	var muzzle = left_muzzle if is_left else right_muzzle
-	var muzzle_light = left_muzzle_light if is_left else right_muzzle_light
-	var spawn_pos = muzzle.global_position if is_instance_valid(muzzle) else (global_position + Vector3(0, 1.5, 0))
-	
-	if muzzle_light:
-		muzzle_light.light_energy = 5.0
-		var lt = create_tween()
-		lt.tween_property(muzzle_light, "light_energy", 0.0, 0.08)
-	
-	# Slight aim spread allows dodging
-	var aim_dir = (target.global_position + Vector3(0, 1.1, 0) - spawn_pos).normalized()
-	aim_dir += Vector3(randf_range(-0.05, 0.05), randf_range(-0.03, 0.03), randf_range(-0.05, 0.05))
-	aim_dir = aim_dir.normalized()
-	
 	bullet.direction = aim_dir
-	get_parent().add_child(bullet)
+	
+	get_tree().current_scene.add_child(bullet)
 	bullet.global_position = spawn_pos
 	
-	# Heavy Bruiser & Boss: Extra Rocket Volley
-	if bot_type in ["bruiser", "boss"] and randf() > 0.40:
-		var rocket = Area3D.new()
-		rocket.set_script(bullet_script)
-		rocket.team = "enemy"
-		rocket.weapon_type = "enemy"
-		rocket.damage = damage_per_shot * 1.4
-		rocket.direction = (aim_dir + Vector3(randf_range(-0.08, 0.08), 0.05, 0)).normalized()
-		get_parent().add_child(rocket)
-		rocket.global_position = right_muzzle.global_position if is_instance_valid(right_muzzle) else spawn_pos
-		
-	if burst_count >= max_burst:
-		burst_count = 0
-		burst_pause = randf_range(1.4, 2.2) if bot_type == "scout" else randf_range(1.8, 2.6)
-		if visor_mat: visor_mat.emission_energy_multiplier = 1.4
+	# Muzzle flash
+	var m_light = OmniLight3D.new()
+	m_light.light_color = Color(1.0, 0.5, 0.1)
+	m_light.light_energy = 4.0
+	m_light.omni_range = 6.0
+	get_tree().current_scene.add_child(m_light)
+	m_light.global_position = spawn_pos
+	get_tree().create_timer(0.08).timeout.connect(func(): if is_instance_valid(m_light): m_light.queue_free())
 
 func _spawn_footstep_shockwave() -> void:
 	var player = get_tree().get_first_node_in_group("player")
@@ -310,22 +317,6 @@ func _spawn_footstep_shockwave() -> void:
 		var p_dist = global_position.distance_to(player.global_position)
 		if p_dist < 32.0 and player.get("camera_shake") != null:
 			player.camera_shake = max(player.camera_shake, 0.28 * (1.0 - p_dist / 32.0))
-			
-	var dust = CPUParticles3D.new()
-	dust.emitting = true
-	dust.one_shot = true
-	dust.explosiveness = 1.0
-	dust.amount = 16
-	dust.lifetime = 0.55
-	dust.direction = Vector3.UP
-	dust.spread = 90.0
-	dust.initial_velocity_min = 2.5
-	dust.initial_velocity_max = 6.0
-	dust.gravity = Vector3(0, -6.0, 0)
-	dust.color = Color(0.35, 0.4, 0.45, 0.6)
-	get_parent().add_child(dust)
-	dust.global_position = global_position + Vector3(0, 0.1, 0)
-	get_tree().create_timer(0.65).timeout.connect(dust.queue_free)
 
 func _find_target() -> void:
 	var potential_targets = []
@@ -349,7 +340,7 @@ func _find_target() -> void:
 
 func apply_emp_stun(duration: float) -> void:
 	if bot_type == "boss":
-		duration *= 0.55
+		duration *= 0.50
 		
 	is_stunned = true
 	stun_timer = duration
@@ -359,13 +350,16 @@ func apply_emp_stun(duration: float) -> void:
 func _recover_from_stun() -> void:
 	is_stunned = false
 	if stun_sparks: stun_sparks.emitting = false
-	if prompt_label: prompt_label.visible = false
+	if prompt_label and (health / max_health) > 0.35:
+		prompt_label.visible = false
 	if visor_mat:
 		var red = Color(1.0, 0.1, 0.1) if bot_type != "scout" else Color(1.0, 0.5, 0.0)
 		visor_mat.emission = red
 		visor_mat.emission_energy_multiplier = 1.4
 
 func take_damage(amount: float, _hit_pos: Vector3 = Vector3.ZERO) -> void:
+	if is_dying: return
+	
 	if is_stunned:
 		amount *= 1.45
 		
@@ -378,13 +372,14 @@ func take_damage(amount: float, _hit_pos: Vector3 = Vector3.ZERO) -> void:
 			hud.update_boss_health(health, max_health)
 			
 	if visor_mat:
-		visor_mat.emission_energy_multiplier = 4.2
-		var t = create_tween()
+		visor_mat.emission_energy_multiplier = 4.0
+		var t = get_tree().create_tween()
 		t.tween_property(visor_mat, "emission_energy_multiplier", 1.4, 0.08)
 		
-	# Automatic Stun Vulnerability when HP < 35%
-	if health > 0 and (health / max_health) <= 0.35 and not is_stunned:
-		apply_emp_stun(4.5)
+	# Spark and show hack prompt when damaged below 35% HP (without freezing)
+	if health > 0 and (health / max_health) <= 0.35:
+		if prompt_label: prompt_label.visible = true
+		if stun_sparks: stun_sparks.emitting = true
 		
 	if health <= 0.0:
 		_die()
@@ -397,6 +392,15 @@ func _update_health_display() -> void:
 			health_label.modulate = Color(1.0, 0.2, 0.2)
 
 func _die() -> void:
+	if is_dying: return
+	is_dying = true
+	
+	# Instantly hide robot and disable collisions
+	visible = false
+	set_physics_process(false)
+	var col = get_node_or_null("CollisionShape3D")
+	if col: col.set_deferred("disabled", true)
+	
 	AudioManager.play_explosion()
 	_spawn_massive_cinematic_explosion()
 	
@@ -407,51 +411,84 @@ func _die() -> void:
 	queue_free()
 
 func _spawn_massive_cinematic_explosion() -> void:
-	# 1. Fireball
+	var root = get_tree().current_scene
+	if not is_instance_valid(root): return
+	var spawn_pos = global_position + Vector3(0, 1.2 * scale.y, 0)
+	
+	# 1. Expanding Fireball (bound to fireball itself, guaranteed deletion)
 	var fireball = MeshInstance3D.new()
 	var f_sph = SphereMesh.new()
-	f_sph.radius = 1.5 * scale.y * 0.5
-	f_sph.height = 3.0 * scale.y * 0.5
+	f_sph.radius = 1.0 * scale.y
+	f_sph.height = 2.0 * scale.y
 	fireball.mesh = f_sph
 	
 	var f_mat = StandardMaterial3D.new()
-	f_mat.albedo_color = Color(1.0, 0.6, 0.1)
+	f_mat.albedo_color = Color(1.0, 0.5, 0.1, 0.95)
 	f_mat.emission_enabled = true
-	f_mat.emission = Color(1.0, 0.7, 0.15)
-	f_mat.emission_energy_multiplier = 5.0
+	f_mat.emission = Color(1.0, 0.65, 0.15)
+	f_mat.emission_energy_multiplier = 4.5
 	fireball.material_override = f_mat
 	
-	get_parent().add_child(fireball)
-	fireball.global_position = global_position + Vector3(0, 1.5 * scale.y, 0)
+	root.add_child(fireball)
+	fireball.global_position = spawn_pos
 	
-	var ft = create_tween()
-	ft.tween_property(fireball, "scale", Vector3(3.5, 3.5, 3.5), 0.55).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	ft.parallel().tween_property(f_mat, "albedo_color:a", 0.0, 0.55)
+	var ft = fireball.create_tween()
+	ft.tween_property(fireball, "scale", Vector3(2.4, 2.4, 2.4), 0.32).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	ft.parallel().tween_property(f_mat, "albedo_color:a", 0.0, 0.32)
 	ft.tween_callback(fireball.queue_free)
+	get_tree().create_timer(0.38).timeout.connect(func(): if is_instance_valid(fireball): fireball.queue_free())
 	
 	# 2. Debris Particles
 	var debris = CPUParticles3D.new()
 	debris.emitting = true
 	debris.one_shot = true
 	debris.explosiveness = 1.0
-	debris.amount = 40
-	debris.lifetime = 1.2
+	debris.amount = 45
+	debris.lifetime = 0.75
 	debris.spread = 180.0
-	debris.initial_velocity_min = 12.0
-	debris.initial_velocity_max = 26.0
+	debris.initial_velocity_min = 10.0
+	debris.initial_velocity_max = 24.0
 	debris.gravity = Vector3(0, -18.0, 0)
 	debris.color = Color(1.0, 0.45, 0.1)
-	get_parent().add_child(debris)
-	debris.global_position = global_position + Vector3(0, 1.5 * scale.y, 0)
-	get_tree().create_timer(2.0).timeout.connect(debris.queue_free)
+	root.add_child(debris)
+	debris.global_position = spawn_pos
+	get_tree().create_timer(0.85).timeout.connect(func(): if is_instance_valid(debris): debris.queue_free())
+
+	# 3. Shockwave ground ring
+	var ring = MeshInstance3D.new()
+	var torus = TorusMesh.new()
+	torus.inner_radius = 0.8
+	torus.outer_radius = 1.3
+	ring.mesh = torus
+	ring.rotation_degrees.x = 90
+	var r_mat = StandardMaterial3D.new()
+	r_mat.albedo_color = Color(1.0, 0.8, 0.2)
+	r_mat.emission_enabled = true
+	r_mat.emission = Color(1.0, 0.8, 0.2)
+	r_mat.emission_energy_multiplier = 3.5
+	ring.material_override = r_mat
+	root.add_child(ring)
+	ring.global_position = global_position + Vector3(0, 0.2, 0)
+	
+	var rt = ring.create_tween()
+	rt.tween_property(ring, "scale", Vector3(10.0 * scale.y, 1.0, 10.0 * scale.y), 0.32).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	rt.parallel().tween_property(r_mat, "albedo_color:a", 0.0, 0.32)
+	rt.tween_callback(ring.queue_free)
+	get_tree().create_timer(0.38).timeout.connect(func(): if is_instance_valid(ring): ring.queue_free())
+	
+	# 4. Screen Shake for player
+	var player = get_tree().get_first_node_in_group("player")
+	if is_instance_valid(player) and player.get("camera_shake") != null:
+		player.camera_shake = max(player.camera_shake, 0.50)
 
 func _setup_collision() -> void:
 	var col = CollisionShape3D.new()
+	col.name = "CollisionShape3D"
 	var cap = CapsuleShape3D.new()
-	cap.radius = 0.9
-	cap.height = 2.8
+	cap.radius = 0.85
+	cap.height = 2.6
 	col.shape = cap
-	col.position.y = 1.4
+	col.position.y = 1.3
 	add_child(col)
 
 func _build_mech_model() -> void:
@@ -469,11 +506,6 @@ func _build_mech_model() -> void:
 	steel_mat.albedo_color = Color(0.18, 0.20, 0.24)
 	steel_mat.metallic = 0.96
 	steel_mat.roughness = 0.20
-	
-	var hazard_mat = StandardMaterial3D.new()
-	hazard_mat.albedo_color = Color(0.9, 0.75, 0.1)
-	hazard_mat.metallic = 0.8
-	hazard_mat.roughness = 0.3
 	
 	# Optical Visor Material
 	visor_mat = StandardMaterial3D.new()
@@ -539,7 +571,7 @@ func _build_mech_model() -> void:
 	torso.add_child(reactor)
 	
 	# Weapons: Dual Blasters / Gatling Barrels
-	var left_arm = MeshInstance3D.new()
+	left_arm = MeshInstance3D.new()
 	var la_box = BoxMesh.new()
 	la_box.size = Vector3(0.35, 0.4, 0.8)
 	left_arm.mesh = la_box
@@ -547,7 +579,7 @@ func _build_mech_model() -> void:
 	left_arm.material_override = steel_mat
 	torso.add_child(left_arm)
 	
-	var right_arm = MeshInstance3D.new()
+	right_arm = MeshInstance3D.new()
 	var ra_box = BoxMesh.new()
 	ra_box.size = Vector3(0.35, 0.4, 0.8)
 	right_arm.mesh = ra_box
@@ -578,25 +610,6 @@ func _build_mech_model() -> void:
 			b_mesh.material_override = steel_mat
 			g.add_child(b_mesh)
 			
-	# Muzzle Markers
-	left_muzzle = Marker3D.new()
-	left_muzzle.position = Vector3(0, 0, 0.75)
-	left_gatling_barrels.add_child(left_muzzle)
-	
-	right_muzzle = Marker3D.new()
-	right_muzzle.position = Vector3(0, 0, 0.75)
-	right_gatling_barrels.add_child(right_muzzle)
-	
-	left_muzzle_light = OmniLight3D.new()
-	left_muzzle_light.light_color = eye_color
-	left_muzzle_light.light_energy = 0.0
-	left_muzzle.add_child(left_muzzle_light)
-	
-	right_muzzle_light = OmniLight3D.new()
-	right_muzzle_light.light_color = eye_color
-	right_muzzle_light.light_energy = 0.0
-	right_muzzle.add_child(right_muzzle_light)
-	
 	# Reverse-Joint Bipedal Legs
 	left_leg = Node3D.new()
 	left_leg.position = Vector3(-0.55, 0.85, 0)
