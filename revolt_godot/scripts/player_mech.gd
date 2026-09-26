@@ -38,8 +38,8 @@ var walk_cycle: float = 0.0
 var step_interval: float = 0.4
 var step_timer: float = 0.0
 
-# Camera & Aiming
-var camera_pitch: float = -12.0
+# Elevated Camera & Aiming
+var camera_pitch: float = -28.0
 var camera_yaw: float = 0.0
 var camera_shake: float = 0.0
 
@@ -75,7 +75,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
 		camera_yaw -= event.relative.x * MOUSE_SENSITIVITY
 		camera_pitch -= event.relative.y * MOUSE_SENSITIVITY * 45.0
-		camera_pitch = clamp(camera_pitch, -45.0, 20.0)
+		camera_pitch = clamp(camera_pitch, -45.0, 15.0)
 		
 	if event.is_action_pressed("ui_cancel"):
 		if Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
@@ -147,9 +147,9 @@ func _physics_process(delta: float) -> void:
 		
 		# Procedural walk cycle animation
 		walk_cycle += delta * (14.0 if not is_dashing else 25.0)
-		left_leg.rotation_degrees.x = sin(walk_cycle) * 25.0
-		right_leg.rotation_degrees.x = -sin(walk_cycle) * 25.0
-		torso.position.y = 1.35 + abs(sin(walk_cycle * 2.0)) * 0.08
+		left_leg.rotation_degrees.x = sin(walk_cycle) * 22.0
+		right_leg.rotation_degrees.x = -sin(walk_cycle) * 22.0
+		torso.position.y = 1.35 + abs(sin(walk_cycle * 2.0)) * 0.06
 		
 		step_timer += delta
 		if step_timer >= step_interval:
@@ -182,7 +182,7 @@ func _shoot_cannon() -> void:
 	heat_updated.emit(current_heat, max_heat)
 	
 	AudioManager.play_shoot(1.0 if current_barrel == 0 else 1.08)
-	camera_shake = max(camera_shake, 0.12)
+	camera_shake = max(camera_shake, 0.1)
 	
 	# Spawn Bullet
 	var bullet_script = load("res://scripts/bullet.gd")
@@ -195,9 +195,9 @@ func _shoot_cannon() -> void:
 	var barrel = left_barrel_mesh if current_barrel == 0 else right_barrel_mesh
 	
 	# Recoil kick on barrel
-	barrel.position.z = 0.35
+	barrel.position.z = 0.25
 	var tween = create_tween()
-	tween.tween_property(barrel, "position:z", 0.0, 0.1)
+	tween.tween_property(barrel, "position:z", 0.0, 0.08)
 	
 	# Direction towards crosshair center
 	var aim_target = _get_aim_target()
@@ -229,13 +229,13 @@ func _trigger_emp() -> void:
 	emp_cooldown = emp_max_cooldown
 	emp_cooldown_updated.emit(emp_cooldown, emp_max_cooldown)
 	AudioManager.play_emp()
-	camera_shake = 0.5
+	camera_shake = 0.4
 	
 	# Spawn expanding visual EMP blast wave
 	var blast_mesh = MeshInstance3D.new()
 	var torus = TorusMesh.new()
 	torus.inner_radius = 1.0
-	torus.outer_radius = 1.6
+	torus.outer_radius = 1.4
 	blast_mesh.mesh = torus
 	blast_mesh.rotation_degrees.x = 90
 	
@@ -243,7 +243,7 @@ func _trigger_emp() -> void:
 	mat.albedo_color = Color(0.1, 0.85, 1.0)
 	mat.emission_enabled = true
 	mat.emission = Color(0.1, 0.9, 1.0)
-	mat.emission_energy_multiplier = 8.0
+	mat.emission_energy_multiplier = 1.8 # Controlled crisp glow
 	blast_mesh.material_override = mat
 	
 	get_parent().add_child(blast_mesh)
@@ -251,8 +251,8 @@ func _trigger_emp() -> void:
 	
 	# Blast tween scale & fade
 	var tween = create_tween()
-	tween.tween_property(blast_mesh, "scale", Vector3(emp_radius, 1.0, emp_radius), 0.55).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	tween.parallel().tween_property(mat, "albedo_color:a", 0.0, 0.55)
+	tween.tween_property(blast_mesh, "scale", Vector3(emp_radius, 1.0, emp_radius), 0.5).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tween.parallel().tween_property(mat, "albedo_color:a", 0.0, 0.5)
 	tween.tween_callback(blast_mesh.queue_free)
 	
 	# Stun all enemy bots within radius
@@ -264,10 +264,9 @@ func _trigger_emp() -> void:
 				enemy.apply_emp_stun(6.5)
 
 func _process_reprogram(delta: float) -> void:
-	# Find closest stunned enemy
 	var enemies = get_tree().get_nodes_in_group("enemies")
 	var closest_stunned: Node3D = null
-	var min_dist = 4.2
+	var min_dist = 4.5
 	
 	for enemy in enemies:
 		if is_instance_valid(enemy) and enemy.get("is_stunned") == true:
@@ -311,7 +310,7 @@ func _convert_enemy_to_ally(enemy: Node3D) -> void:
 func take_damage(amount: float, _hit_pos: Vector3 = Vector3.ZERO) -> void:
 	health = max(0.0, health - amount)
 	health_changed.emit(health, max_health)
-	camera_shake = max(camera_shake, 0.45)
+	camera_shake = max(camera_shake, 0.35)
 	
 	if health <= 0.0:
 		AudioManager.play_explosion()
@@ -320,7 +319,8 @@ func take_damage(amount: float, _hit_pos: Vector3 = Vector3.ZERO) -> void:
 			main_node.game_over(false)
 
 func _update_camera(delta: float) -> void:
-	camera_pivot.global_position = global_position + Vector3(0, 1.8, 0)
+	# Elevated camera follow position looking down over the ropes
+	camera_pivot.global_position = global_position + Vector3(0, 3.2, 0)
 	camera_pivot.rotation.y = camera_yaw
 	spring_arm.rotation_degrees.x = camera_pitch
 	
@@ -328,8 +328,8 @@ func _update_camera(delta: float) -> void:
 	if camera_shake > 0.0:
 		camera_shake = max(0.0, camera_shake - delta * 2.0)
 		var shake_offset = Vector3(
-			randf_range(-camera_shake, camera_shake) * 0.25,
-			randf_range(-camera_shake, camera_shake) * 0.25,
+			randf_range(-camera_shake, camera_shake) * 0.2,
+			randf_range(-camera_shake, camera_shake) * 0.2,
 			0
 		)
 		camera.position = shake_offset
@@ -339,20 +339,28 @@ func _update_camera(delta: float) -> void:
 func _setup_camera() -> void:
 	camera_pivot = Node3D.new()
 	camera_pivot.name = "CameraPivot"
-	get_parent().call_deferred("add_child", camera_pivot)
+	camera_pivot.top_level = true
+	add_child(camera_pivot)
 	
 	spring_arm = SpringArm3D.new()
-	spring_arm.spring_length = 5.2
-	spring_arm.margin = 0.2
+	spring_arm.spring_length = 9.5
+	spring_arm.margin = 0.3
 	camera_pivot.add_child(spring_arm)
 	
 	camera = Camera3D.new()
 	camera.current = true
-	camera.fov = 75.0
+	camera.fov = 70.0
 	spring_arm.add_child(camera)
 	
-	# Camera offset for over-the-shoulder view
-	spring_arm.position = Vector3(0.9, 0.8, 0)
+	spring_arm.position = Vector3(0.0, 1.0, 0)
+	
+	# Subtle dedicated chassis fill light to illuminate mech armor & weapons
+	var fill_light = OmniLight3D.new()
+	fill_light.position = Vector3(0, 3.0, 2.0)
+	fill_light.light_color = Color(0.85, 0.92, 1.0)
+	fill_light.light_energy = 2.0
+	fill_light.omni_range = 9.0
+	add_child(fill_light)
 
 func _setup_collision() -> void:
 	var col = CollisionShape3D.new()
@@ -364,174 +372,187 @@ func _setup_collision() -> void:
 	add_child(col)
 
 func _build_mech_mesh() -> void:
-	# Base root for torso and head
 	torso = Node3D.new()
 	torso.position.y = 1.35
 	add_child(torso)
 	
-	# Heavy Armored Chassis (Dark Titanium Steel)
-	var body_mat = StandardMaterial3D.new()
-	body_mat.albedo_color = Color(0.2, 0.22, 0.26)
-	body_mat.metallic = 0.92
-	body_mat.roughness = 0.32
+	# PBR Textured Armor Material
+	var armor_mat = StandardMaterial3D.new()
+	var armor_tex = load("res://assets/armor_albedo.png")
+	var armor_norm = load("res://assets/armor_normal.png")
+	armor_mat.albedo_texture = armor_tex
+	armor_mat.normal_enabled = true
+	armor_mat.normal_texture = armor_norm
+	armor_mat.metallic = 0.88
+	armor_mat.roughness = 0.32
 	
-	var neon_mat = StandardMaterial3D.new()
-	neon_mat.albedo_color = Color(0.0, 0.85, 1.0)
-	neon_mat.emission_enabled = true
-	neon_mat.emission = Color(0.0, 0.85, 1.0)
-	neon_mat.emission_energy_multiplier = 4.5
+	# Dark Steel Internal Mechanics Material
+	var steel_mat = StandardMaterial3D.new()
+	steel_mat.albedo_color = Color(0.2, 0.22, 0.26)
+	steel_mat.metallic = 0.95
+	steel_mat.roughness = 0.25
 	
-	# Main Torso Hull
+	# Chrome/Gold Hydraulic Piston Material
+	var piston_mat = StandardMaterial3D.new()
+	piston_mat.albedo_color = Color(0.85, 0.75, 0.35)
+	piston_mat.metallic = 0.98
+	piston_mat.roughness = 0.15
+	
+	# Crisp Cyan Visor Material (controlled emission, NOT blinding white!)
+	var visor_mat = StandardMaterial3D.new()
+	var cyan = Color(0.0, 0.85, 1.0)
+	visor_mat.albedo_color = cyan
+	visor_mat.emission_enabled = true
+	visor_mat.emission = cyan
+	visor_mat.emission_energy_multiplier = 1.4
+	
+	# Main Cockpit Pod (ED-209 style angled armored chassis)
 	var hull = MeshInstance3D.new()
 	var hull_box = BoxMesh.new()
-	hull_box.size = Vector3(1.4, 1.0, 1.3)
+	hull_box.size = Vector3(1.5, 0.9, 1.3)
 	hull.mesh = hull_box
-	hull.material_override = body_mat
+	hull.material_override = armor_mat
 	torso.add_child(hull)
 	
-	# Cockpit / Visor (ED-209 style glowing cyan visor)
+	# Front Angled Brow Armor
+	var brow = MeshInstance3D.new()
+	var b_box = BoxMesh.new()
+	b_box.size = Vector3(1.4, 0.3, 0.4)
+	brow.mesh = b_box
+	brow.position = Vector3(0, 0.35, 0.6)
+	brow.material_override = armor_mat
+	torso.add_child(brow)
+	
+	# Sleek Cyan Scanner Visor
 	var visor = MeshInstance3D.new()
-	var visor_box = BoxMesh.new()
-	visor_box.size = Vector3(1.1, 0.22, 0.3)
-	visor.mesh = visor_box
-	visor.position = Vector3(0, 0.2, 0.65)
-	visor.material_override = neon_mat
+	var v_box = BoxMesh.new()
+	v_box.size = Vector3(1.15, 0.16, 0.2)
+	visor.mesh = v_box
+	visor.position = Vector3(0, 0.15, 0.68)
+	visor.material_override = visor_mat
 	torso.add_child(visor)
 	
-	# Top Armored Dome
-	var dome = MeshInstance3D.new()
-	var dome_cyl = CylinderMesh.new()
-	dome_cyl.top_radius = 0.6
-	dome_cyl.bottom_radius = 0.72
-	dome_cyl.height = 0.4
-	dome.mesh = dome_cyl
-	dome.position = Vector3(0, 0.65, 0)
-	dome.material_override = body_mat
-	torso.add_child(dome)
+	# Upper Exhaust Vent Cowling
+	var vent = MeshInstance3D.new()
+	var v_cyl = CylinderMesh.new()
+	v_cyl.top_radius = 0.55
+	v_cyl.bottom_radius = 0.68
+	v_cyl.height = 0.35
+	vent.mesh = v_cyl
+	vent.position = Vector3(0, 0.55, -0.1)
+	vent.material_override = steel_mat
+	torso.add_child(vent)
 	
-	# Rear Exhaust Boosters
-	for x_off in [-0.4, 0.4]:
-		var thruster = MeshInstance3D.new()
-		var cyl = CylinderMesh.new()
-		cyl.top_radius = 0.16
-		cyl.bottom_radius = 0.22
-		cyl.height = 0.45
-		thruster.mesh = cyl
-		thruster.rotation_degrees.x = 90
-		thruster.position = Vector3(x_off, 0.2, -0.7)
-		thruster.material_override = neon_mat
-		torso.add_child(thruster)
-		
-	# Left Weapon Arm (Heavy Rotary Autocannon)
+	# Dual Arm Weapons (Heavy Autocannon Gatling & Plasma Cannon)
+	# Left: Gatling Cannon
 	left_gun = Node3D.new()
-	left_gun.position = Vector3(-0.95, 0.05, 0.2)
+	left_gun.position = Vector3(-1.05, 0.05, 0.2)
 	torso.add_child(left_gun)
 	
 	var l_shroud = MeshInstance3D.new()
 	var l_sbox = BoxMesh.new()
-	l_sbox.size = Vector3(0.35, 0.4, 0.8)
+	l_sbox.size = Vector3(0.4, 0.45, 0.8)
 	l_shroud.mesh = l_sbox
-	l_shroud.material_override = body_mat
+	l_shroud.material_override = armor_mat
 	left_gun.add_child(l_shroud)
 	
 	left_barrel_mesh = MeshInstance3D.new()
 	var l_bcyl = CylinderMesh.new()
-	l_bcyl.top_radius = 0.12
-	l_bcyl.bottom_radius = 0.12
-	l_bcyl.height = 1.0
+	l_bcyl.top_radius = 0.14
+	l_bcyl.bottom_radius = 0.14
+	l_bcyl.height = 1.1
 	left_barrel_mesh.mesh = l_bcyl
 	left_barrel_mesh.rotation_degrees.x = 90
-	left_barrel_mesh.position = Vector3(0, 0, 0.7)
-	left_barrel_mesh.material_override = body_mat
+	left_barrel_mesh.position = Vector3(0, 0, 0.75)
+	left_barrel_mesh.material_override = steel_mat
 	left_gun.add_child(left_barrel_mesh)
 	
 	left_muzzle = Marker3D.new()
-	left_muzzle.position = Vector3(0, 0, 1.25)
+	left_muzzle.position = Vector3(0, 0, 1.35)
 	left_gun.add_child(left_muzzle)
 	
-	# Right Weapon Arm (Autocannon / EMP Shock Cannon)
+	# Right: Heavy Plasma / EMP Cannon
 	right_gun = Node3D.new()
-	right_gun.position = Vector3(0.95, 0.05, 0.2)
+	right_gun.position = Vector3(1.05, 0.05, 0.2)
 	torso.add_child(right_gun)
 	
 	var r_shroud = MeshInstance3D.new()
 	var r_sbox = BoxMesh.new()
-	r_sbox.size = Vector3(0.35, 0.4, 0.8)
+	r_sbox.size = Vector3(0.4, 0.45, 0.8)
 	r_shroud.mesh = r_sbox
-	r_shroud.material_override = body_mat
+	r_shroud.material_override = armor_mat
 	right_gun.add_child(r_shroud)
 	
 	right_barrel_mesh = MeshInstance3D.new()
 	var r_bcyl = CylinderMesh.new()
-	r_bcyl.top_radius = 0.12
-	r_bcyl.bottom_radius = 0.12
-	r_bcyl.height = 1.0
+	r_bcyl.top_radius = 0.14
+	r_bcyl.bottom_radius = 0.14
+	r_bcyl.height = 1.1
 	right_barrel_mesh.mesh = r_bcyl
 	right_barrel_mesh.rotation_degrees.x = 90
-	right_barrel_mesh.position = Vector3(0, 0, 0.7)
-	right_barrel_mesh.material_override = body_mat
+	right_barrel_mesh.position = Vector3(0, 0, 0.75)
+	right_barrel_mesh.material_override = steel_mat
 	right_gun.add_child(right_barrel_mesh)
 	
 	right_muzzle = Marker3D.new()
-	right_muzzle.position = Vector3(0, 0, 1.25)
+	right_muzzle.position = Vector3(0, 0, 1.35)
 	right_gun.add_child(right_muzzle)
 	
-	# Bipedal Legs (ED-209 Reverse-Joint Walkers)
-	left_leg = _create_leg(Vector3(-0.6, 1.0, 0), body_mat)
-	right_leg = _create_leg(Vector3(0.6, 1.0, 0), body_mat)
+	# Heavy Reverse-Joint Legs with Visible Hydraulic Pistons
+	left_leg = _create_heavy_leg(Vector3(-0.6, 1.0, 0), armor_mat, steel_mat, piston_mat)
+	right_leg = _create_heavy_leg(Vector3(0.6, 1.0, 0), armor_mat, steel_mat, piston_mat)
 	add_child(left_leg)
 	add_child(right_leg)
 
-func _create_leg(pos: Vector3, mat: Material) -> Node3D:
+func _create_heavy_leg(pos: Vector3, armor_mat: Material, steel_mat: Material, piston_mat: Material) -> Node3D:
 	var leg_root = Node3D.new()
 	leg_root.position = pos
 	
-	# Hip joint
+	# Hip Joint Ball
 	var hip = MeshInstance3D.new()
 	var hip_sph = SphereMesh.new()
-	hip_sph.radius = 0.25
-	hip_sph.height = 0.5
+	hip_sph.radius = 0.26
+	hip_sph.height = 0.52
 	hip.mesh = hip_sph
-	hip.material_override = mat
+	hip.material_override = steel_mat
 	leg_root.add_child(hip)
 	
-	# Thigh
+	# Upper Thigh Armor Plate
 	var thigh = MeshInstance3D.new()
 	var t_box = BoxMesh.new()
-	t_box.size = Vector3(0.3, 0.6, 0.35)
+	t_box.size = Vector3(0.35, 0.65, 0.4)
 	thigh.mesh = t_box
 	thigh.position = Vector3(0, -0.35, 0.05)
-	thigh.material_override = mat
+	thigh.material_override = armor_mat
 	leg_root.add_child(thigh)
 	
-	# Hydraulic Reverse Knee
-	var knee = MeshInstance3D.new()
-	var k_cyl = CylinderMesh.new()
-	k_cyl.top_radius = 0.18
-	k_cyl.bottom_radius = 0.18
-	k_cyl.height = 0.35
-	knee.mesh = k_cyl
-	knee.rotation_degrees.z = 90
-	knee.position = Vector3(0, -0.65, -0.1)
-	knee.material_override = mat
-	leg_root.add_child(knee)
+	# Hydraulic Reverse Knee Piston
+	var knee_piston = MeshInstance3D.new()
+	var kp_cyl = CylinderMesh.new()
+	kp_cyl.top_radius = 0.08
+	kp_cyl.bottom_radius = 0.08
+	kp_cyl.height = 0.55
+	knee_piston.mesh = kp_cyl
+	knee_piston.position = Vector3(0, -0.65, -0.15)
+	knee_piston.material_override = piston_mat
+	leg_root.add_child(knee_piston)
 	
-	# Shin
+	# Lower Shin Armor
 	var shin = MeshInstance3D.new()
 	var s_box = BoxMesh.new()
-	s_box.size = Vector3(0.28, 0.6, 0.3)
+	s_box.size = Vector3(0.32, 0.65, 0.35)
 	shin.mesh = s_box
 	shin.position = Vector3(0, -0.95, -0.05)
-	shin.material_override = mat
+	shin.material_override = armor_mat
 	leg_root.add_child(shin)
 	
-	# Armored Footpad (Three-toed stabilizer)
+	# Heavy Armored Stabilizer Footpad
 	var foot = MeshInstance3D.new()
 	var f_box = BoxMesh.new()
-	f_box.size = Vector3(0.45, 0.18, 0.7)
+	f_box.size = Vector3(0.5, 0.2, 0.8)
 	foot.mesh = f_box
 	foot.position = Vector3(0, -1.25, 0.15)
-	foot.material_override = mat
+	foot.material_override = steel_mat
 	leg_root.add_child(foot)
 	
 	return leg_root

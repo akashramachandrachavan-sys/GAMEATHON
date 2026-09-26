@@ -17,31 +17,52 @@ var world_env: WorldEnvironment
 func _ready() -> void:
 	_setup_environment()
 	_setup_arena()
-	_show_story_intro()
+	if OS.get_cmdline_user_args().has("--fast-start"):
+		_start_gameplay()
+	else:
+		_show_story_intro()
 
 func _setup_environment() -> void:
 	world_env = WorldEnvironment.new()
 	var env = Environment.new()
 	
-	# Glow / Bloom for neon visors, lasers, and EMP arcs
+	# Realistic Cyberpunk Sky / Warehouse Dome
+	env.background_mode = Environment.BG_SKY
+	var sky = Sky.new()
+	var sky_mat = ProceduralSkyMaterial.new()
+	sky_mat.sky_top_color = Color(0.12, 0.16, 0.24)
+	sky_mat.sky_horizon_color = Color(0.24, 0.3, 0.42)
+	sky_mat.ground_bottom_color = Color(0.08, 0.1, 0.14)
+	sky_mat.ground_horizon_color = Color(0.18, 0.22, 0.3)
+	sky_mat.sun_angle_max = 30.0
+	sky.sky_material = sky_mat
+	env.sky = sky
+	
+	# PBR Ambient Lighting & Sky Reflections (Gives metallic armor natural reflections)
+	env.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
+	env.ambient_light_color = Color(0.35, 0.42, 0.55)
+	env.ambient_light_sky_contribution = 0.9
+	env.ambient_light_energy = 1.8
+	
+	# Soft bloom / glow (No blinding additive blowouts!)
 	env.glow_enabled = true
-	env.glow_intensity = 1.2
-	env.glow_bloom = 0.25
-	env.glow_blend_mode = Environment.GLOW_BLEND_MODE_ADDITIVE
+	env.glow_intensity = 0.5
+	env.glow_bloom = 0.05
+	env.glow_blend_mode = Environment.GLOW_BLEND_MODE_SOFTLIGHT
 	
-	# Tonemap
+	# Filmic / ACES Tonemapping
 	env.tonemap_mode = Environment.TONE_MAPPER_ACES
-	env.tonemap_exposure = 1.15
+	env.tonemap_exposure = 1.25
 	
-	# Ambient light
-	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	env.ambient_light_color = Color(0.12, 0.15, 0.22)
-	env.ambient_light_energy = 1.2
+	# Screen-space Ambient Occlusion (SSAO) for grounded contact shadows
+	env.ssao_enabled = true
+	env.ssao_radius = 1.8
+	env.ssao_intensity = 2.2
 	
-	# Fog for industrial warehouse atmosphere
+	# Subtle atmospheric depth haze (Light and clean)
 	env.fog_enabled = true
-	env.fog_light_color = Color(0.05, 0.08, 0.12)
-	env.fog_density = 0.012
+	env.fog_light_color = Color(0.1, 0.14, 0.2)
+	env.fog_density = 0.001
 	
 	world_env.environment = env
 	add_child(world_env)
@@ -188,7 +209,6 @@ func game_over(victory: bool) -> void:
 	game_active = false
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	
-	# Show End Game UI
 	var end_layer = CanvasLayer.new()
 	var bg = Panel.new()
 	bg.set_anchors_preset(Control.PRESET_FULL_RECT)

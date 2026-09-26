@@ -1,20 +1,20 @@
 extends Node3D
 
-# Generates the Heavy Industrial Cyberpunk Boxing Ring Arena
-# Complete with 4 corner hydraulic turnbuckles, glowing containment cables,
-# hazard warning borders, elevated steel combat floor, and dynamic arena floodlights.
+# Realistic Cyberpunk Boxing Ring Arena Generator
+# Features PBR diamond plate floor with center insignia, hazard borders,
+# authentic red/white/blue wrapped boxing ropes, padded turnbuckles,
+# an illuminated background OMEGA ROBOTICS billboard, and overhead stadium truss lighting.
 
 const RING_HALF_SIZE = 18.0
 
 func _ready() -> void:
 	_build_floor()
 	_build_corner_posts()
-	_build_ring_cables()
+	_build_ring_ropes()
 	_build_industrial_surroundings()
-	_build_lighting()
+	_build_stadium_lighting()
 
 func _build_floor() -> void:
-	# Main combat deck (elevated steel plate)
 	var floor_body = StaticBody3D.new()
 	var floor_mesh = MeshInstance3D.new()
 	var box = BoxMesh.new()
@@ -22,15 +22,22 @@ func _build_floor() -> void:
 	floor_mesh.mesh = box
 	floor_mesh.position.y = -0.5
 	
+	# High-Res Industrial Steel PBR Material
 	var mat = StandardMaterial3D.new()
-	mat.albedo_color = Color(0.12, 0.14, 0.17)
-	mat.metallic = 0.85
-	mat.roughness = 0.35
-	mat.rim_enabled = true
-	mat.rim = 0.5
+	var albedo_tex = load("res://assets/floor_albedo.png")
+	var normal_tex = load("res://assets/floor_normal.png")
+	
+	mat.albedo_texture = albedo_tex
+	mat.normal_enabled = true
+	mat.normal_texture = normal_tex
+	mat.normal_scale = 1.4
+	mat.metallic = 0.8
+	mat.roughness = 0.28
+	mat.uv1_scale = Vector3(1, 1, 1)
 	floor_mesh.material_override = mat
 	floor_body.add_child(floor_mesh)
 	
+	# Collision
 	var col = CollisionShape3D.new()
 	var col_box = BoxShape3D.new()
 	col_box.size = Vector3(RING_HALF_SIZE * 2.0, 1.0, RING_HALF_SIZE * 2.0)
@@ -39,58 +46,20 @@ func _build_floor() -> void:
 	floor_body.add_child(col)
 	add_child(floor_body)
 	
-	# Center ring logo / circle decal
-	var center_ring = MeshInstance3D.new()
-	var ring_mesh = TorusMesh.new()
-	ring_mesh.inner_radius = 4.8
-	ring_mesh.outer_radius = 5.2
-	center_ring.mesh = ring_mesh
-	center_ring.position.y = 0.02
-	var ring_mat = StandardMaterial3D.new()
-	ring_mat.albedo_color = Color(0.0, 0.7, 1.0)
-	ring_mat.emission_enabled = true
-	ring_mat.emission = Color(0.0, 0.8, 1.0)
-	ring_mat.emission_energy_multiplier = 3.0
-	center_ring.material_override = ring_mat
-	add_child(center_ring)
-	
-	# Hazard warning perimeter border
-	_build_hazard_borders()
-
-func _build_hazard_borders() -> void:
-	var border_mat = StandardMaterial3D.new()
-	border_mat.albedo_color = Color(0.85, 0.7, 0.0)
-	border_mat.metallic = 0.7
-	border_mat.roughness = 0.4
-	border_mat.emission_enabled = true
-	border_mat.emission = Color(0.6, 0.45, 0.0)
-	border_mat.emission_energy_multiplier = 1.5
-
-	var h = 0.05
-	var w = 0.8
-	var l = RING_HALF_SIZE * 2.0
-	
-	var sides = [
-		Vector3(0, 0.02, RING_HALF_SIZE - w * 0.5),
-		Vector3(0, 0.02, -RING_HALF_SIZE + w * 0.5),
-		Vector3(RING_HALF_SIZE - w * 0.5, 0.02, 0),
-		Vector3(-RING_HALF_SIZE + w * 0.5, 0.02, 0)
-	]
-	
-	for i in range(4):
-		var strip = MeshInstance3D.new()
-		var mesh = BoxMesh.new()
-		if i < 2:
-			mesh.size = Vector3(l, h, w)
-		else:
-			mesh.size = Vector3(w, h, l)
-		strip.mesh = mesh
-		strip.position = sides[i]
-		strip.material_override = border_mat
-		add_child(strip)
+	# Ring Side Steel Apron
+	var skirt = MeshInstance3D.new()
+	var skirt_box = BoxMesh.new()
+	skirt_box.size = Vector3(RING_HALF_SIZE * 2.15, 1.2, RING_HALF_SIZE * 2.15)
+	skirt.mesh = skirt_box
+	skirt.position.y = -1.1
+	var skirt_mat = StandardMaterial3D.new()
+	skirt_mat.albedo_color = Color(0.18, 0.2, 0.24)
+	skirt_mat.metallic = 0.95
+	skirt_mat.roughness = 0.35
+	skirt.material_override = skirt_mat
+	add_child(skirt)
 
 func _build_corner_posts() -> void:
-	# 4 Heavy hydraulic turnbuckle posts
 	var corner_coords = [
 		Vector3(RING_HALF_SIZE, 0, RING_HALF_SIZE),
 		Vector3(-RING_HALF_SIZE, 0, RING_HALF_SIZE),
@@ -98,84 +67,92 @@ func _build_corner_posts() -> void:
 		Vector3(-RING_HALF_SIZE, 0, -RING_HALF_SIZE)
 	]
 	
-	var post_mat = StandardMaterial3D.new()
-	post_mat.albedo_color = Color(0.18, 0.2, 0.24)
-	post_mat.metallic = 0.95
-	post_mat.roughness = 0.25
+	var steel_mat = StandardMaterial3D.new()
+	steel_mat.albedo_color = Color(0.28, 0.3, 0.35)
+	steel_mat.metallic = 0.96
+	steel_mat.roughness = 0.2
 	
 	for i in range(4):
 		var pos = corner_coords[i]
 		var post_body = StaticBody3D.new()
 		post_body.position = pos
 		
-		# Base pedestal
+		# Steel Pedestal Base
 		var base = MeshInstance3D.new()
 		var base_mesh = CylinderMesh.new()
-		base_mesh.top_radius = 1.2
-		base_mesh.bottom_radius = 1.6
-		base_mesh.height = 1.0
+		base_mesh.top_radius = 1.0
+		base_mesh.bottom_radius = 1.4
+		base_mesh.height = 0.8
 		base.mesh = base_mesh
-		base.position.y = 0.5
-		base.material_override = post_mat
+		base.position.y = 0.4
+		base.material_override = steel_mat
 		post_body.add_child(base)
 		
-		# Main upright hydraulic shaft
+		# Upright Pylon
 		var shaft = MeshInstance3D.new()
 		var shaft_mesh = CylinderMesh.new()
-		shaft_mesh.top_radius = 0.6
-		shaft_mesh.bottom_radius = 0.7
-		shaft_mesh.height = 6.0
+		shaft_mesh.top_radius = 0.45
+		shaft_mesh.bottom_radius = 0.55
+		shaft_mesh.height = 5.5
 		shaft.mesh = shaft_mesh
-		shaft.position.y = 3.5
-		shaft.material_override = post_mat
+		shaft.position.y = 3.2
+		shaft.material_override = steel_mat
 		post_body.add_child(shaft)
 		
-		# Glowing corner status beacon
+		# Boxing Ring Padded Turnbuckle Cushion
+		var pad = MeshInstance3D.new()
+		var pad_mesh = BoxMesh.new()
+		pad_mesh.size = Vector3(1.0, 4.2, 1.0)
+		pad.mesh = pad_mesh
+		pad.position.y = 3.0
+		var pad_mat = StandardMaterial3D.new()
+		var pad_col = Color(0.0, 0.5, 0.95) if i == 0 else Color(0.9, 0.15, 0.15)
+		pad_mat.albedo_color = pad_col
+		pad_mat.roughness = 0.5
+		pad.material_override = pad_mat
+		post_body.add_child(pad)
+		
+		# Corner Beacon Light
 		var beacon = MeshInstance3D.new()
 		var beacon_mesh = SphereMesh.new()
-		beacon_mesh.radius = 0.5
-		beacon_mesh.height = 1.0
+		beacon_mesh.radius = 0.35
+		beacon_mesh.height = 0.7
 		beacon.mesh = beacon_mesh
-		beacon.position.y = 6.8
+		beacon.position.y = 6.2
 		var beacon_mat = StandardMaterial3D.new()
-		var beacon_color = Color(0.0, 0.85, 1.0) if i == 0 else Color(1.0, 0.15, 0.15)
-		beacon_mat.albedo_color = beacon_color
+		beacon_mat.albedo_color = pad_col
 		beacon_mat.emission_enabled = true
-		beacon_mat.emission = beacon_color
-		beacon_mat.emission_energy_multiplier = 5.0
+		beacon_mat.emission = pad_col
+		beacon_mat.emission_energy_multiplier = 1.2
 		beacon.material_override = beacon_mat
 		post_body.add_child(beacon)
-		
-		# Omni light on beacon
-		var beacon_light = OmniLight3D.new()
-		beacon_light.light_color = beacon_color
-		beacon_light.light_energy = 2.5
-		beacon_light.omni_range = 10.0
-		beacon_light.position.y = 7.0
-		post_body.add_child(beacon_light)
 		
 		# Collision
 		var col = CollisionShape3D.new()
 		var col_shape = CylinderShape3D.new()
-		col_shape.radius = 1.2
-		col_shape.height = 7.0
+		col_shape.radius = 1.0
+		col_shape.height = 6.0
 		col.shape = col_shape
-		col.position.y = 3.5
+		col.position.y = 3.0
 		post_body.add_child(col)
 		
 		add_child(post_body)
 
-func _build_ring_cables() -> void:
-	# 3 Heavy glowing laser/steel containment ropes around the boxing ring
-	var cable_heights = [1.5, 3.0, 4.5]
-	var cable_mat = StandardMaterial3D.new()
-	cable_mat.albedo_color = Color(0.0, 0.9, 1.0)
-	cable_mat.emission_enabled = true
-	cable_mat.emission = Color(0.0, 0.9, 1.0)
-	cable_mat.emission_energy_multiplier = 4.0
+func _build_ring_ropes() -> void:
+	# Authentic Boxing Ring Wrapped Ropes (Top: Red, Middle: White/Silver, Bottom: Blue)
+	var rope_configs = [
+		{"height": 3.8, "color": Color(0.85, 0.15, 0.15)}, # Top Red Rope
+		{"height": 2.5, "color": Color(0.9, 0.92, 0.95)},  # Middle White/Silver Rope
+		{"height": 1.2, "color": Color(0.12, 0.35, 0.85)}  # Bottom Blue Rope
+	]
 	
-	for h in cable_heights:
-		# 4 sides
+	for cfg in rope_configs:
+		var h = cfg["height"]
+		var rope_mat = StandardMaterial3D.new()
+		rope_mat.albedo_color = cfg["color"]
+		rope_mat.roughness = 0.35
+		rope_mat.metallic = 0.4
+		
 		var segments = [
 			[Vector3(-RING_HALF_SIZE, h, -RING_HALF_SIZE), Vector3(RING_HALF_SIZE, h, -RING_HALF_SIZE)],
 			[Vector3(RING_HALF_SIZE, h, -RING_HALF_SIZE), Vector3(RING_HALF_SIZE, h, RING_HALF_SIZE)],
@@ -184,24 +161,23 @@ func _build_ring_cables() -> void:
 		]
 		
 		for seg in segments:
-			var cable = MeshInstance3D.new()
+			var rope = MeshInstance3D.new()
 			var cyl = CylinderMesh.new()
 			cyl.top_radius = 0.08
 			cyl.bottom_radius = 0.08
 			cyl.height = RING_HALF_SIZE * 2.0
-			cable.mesh = cyl
+			rope.mesh = cyl
 			var mid = (seg[0] + seg[1]) * 0.5
-			cable.position = mid
+			rope.position = mid
 			
 			if abs(seg[0].x - seg[1].x) > 0.1:
-				cable.rotation_degrees = Vector3(0, 0, 90)
+				rope.rotation_degrees = Vector3(0, 0, 90)
 			else:
-				cable.rotation_degrees = Vector3(90, 0, 0)
+				rope.rotation_degrees = Vector3(90, 0, 0)
 				
-			cable.material_override = cable_mat
-			add_child(cable)
-	
-	# Arena invisible containment boundary walls (keep robots inside boxing ring)
+			rope.material_override = rope_mat
+			add_child(rope)
+			
 	_build_boundary_colliders()
 
 func _build_boundary_colliders() -> void:
@@ -227,16 +203,14 @@ func _build_boundary_colliders() -> void:
 	add_child(boundary)
 
 func _build_industrial_surroundings() -> void:
-	# Surrounding factory walls, gantry trusses, and ceiling pipes
-	var outer_wall_mat = StandardMaterial3D.new()
-	outer_wall_mat.albedo_color = Color(0.08, 0.09, 0.11)
-	outer_wall_mat.metallic = 0.8
-	outer_wall_mat.roughness = 0.6
+	var outer_mat = StandardMaterial3D.new()
+	outer_mat.albedo_color = Color(0.2, 0.23, 0.28)
+	outer_mat.metallic = 0.75
+	outer_mat.roughness = 0.45
 	
-	# 4 Warehouse exterior backdrop walls
-	var dist = 32.0
+	var dist = 30.0
 	var h = 18.0
-	var w = 70.0
+	var w = 68.0
 	var wall_offsets = [
 		Vector3(0, h * 0.5, dist),
 		Vector3(0, h * 0.5, -dist),
@@ -253,36 +227,86 @@ func _build_industrial_surroundings() -> void:
 			mesh.size = Vector3(2.0, h, w)
 		wall.mesh = mesh
 		wall.position = wall_offsets[i]
-		wall.material_override = outer_wall_mat
+		wall.material_override = outer_mat
 		add_child(wall)
 		
-	# Overhead industrial gantry beams
+	# Illuminated Far Billboard Sign ("OMEGA ROBOTICS // SECTOR 01")
+	var sign_mesh = MeshInstance3D.new()
+	var s_quad = QuadMesh.new()
+	s_quad.size = Vector2(24.0, 6.0)
+	sign_mesh.mesh = s_quad
+	sign_mesh.position = Vector3(0, 10.0, -28.5)
+	
+	var sign_mat = StandardMaterial3D.new()
+	sign_mat.albedo_texture = load("res://assets/sign_omega.png")
+	sign_mat.emission_enabled = true
+	sign_mat.emission_texture = load("res://assets/sign_omega.png")
+	sign_mat.emission_energy_multiplier = 0.9
+	sign_mesh.material_override = sign_mat
+	add_child(sign_mesh)
+	
+	# Overhead Steel Trusses / Gantry
 	for z_pos in [-12.0, 0.0, 12.0]:
 		var beam = MeshInstance3D.new()
 		var beam_mesh = BoxMesh.new()
-		beam_mesh.size = Vector3(50.0, 1.2, 1.2)
+		beam_mesh.size = Vector3(54.0, 1.2, 1.2)
 		beam.mesh = beam_mesh
-		beam.position = Vector3(0, 12.0, z_pos)
-		beam.material_override = outer_wall_mat
+		beam.position = Vector3(0, 14.0, z_pos)
+		beam.material_override = outer_mat
 		add_child(beam)
 
-func _build_lighting() -> void:
-	# Overhead stadium spotlight pointing down at the ring center
-	var spot = SpotLight3D.new()
-	spot.position = Vector3(0, 14.0, 0)
-	spot.rotation_degrees = Vector3(-90, 0, 0)
-	spot.spot_range = 25.0
-	spot.spot_angle = 55.0
-	spot.light_energy = 5.0
-	spot.light_color = Color(0.9, 0.95, 1.0)
-	spot.shadow_enabled = true
-	add_child(spot)
+func _build_stadium_lighting() -> void:
+	# 1. Main Overhead Center Floodlight
+	var center_spot = SpotLight3D.new()
+	center_spot.position = Vector3(0, 16.0, 0)
+	center_spot.rotation_degrees = Vector3(-90, 0, 0)
+	center_spot.spot_range = 32.0
+	center_spot.spot_angle = 70.0
+	center_spot.light_energy = 5.5
+	center_spot.light_color = Color(1.0, 0.98, 0.95)
+	center_spot.shadow_enabled = true
+	add_child(center_spot)
 	
-	# Atmospheric directional fill light
+	# 2. 4 Corner Stadium Cross-Floodlights (angled down into boxing ring)
+	var corners = [
+		Vector3(20, 15, 20),
+		Vector3(-20, 15, 20),
+		Vector3(20, 15, -20),
+		Vector3(-20, 15, -20)
+	]
+	
+	for pos in corners:
+		var spot = SpotLight3D.new()
+		spot.position = pos
+		add_child(spot)
+		spot.look_at(Vector3.ZERO, Vector3.UP)
+		spot.spot_range = 38.0
+		spot.spot_angle = 50.0
+		spot.light_energy = 3.2
+		spot.light_color = Color(0.95, 0.96, 1.0)
+		spot.shadow_enabled = true
+		
+	# 3. 4 Warm Amber Industrial Wall Lamps (light up warehouse surroundings)
+	var wall_lamp_positions = [
+		Vector3(0, 8.0, -27.0),
+		Vector3(0, 8.0, 27.0),
+		Vector3(-27.0, 8.0, 0),
+		Vector3(27.0, 8.0, 0)
+	]
+	
+	for lamp_pos in wall_lamp_positions:
+		var lamp = OmniLight3D.new()
+		lamp.position = lamp_pos
+		lamp.light_color = Color(1.0, 0.7, 0.3)
+		lamp.light_energy = 3.5
+		lamp.omni_range = 28.0
+		add_child(lamp)
+		
+	# 4. Sun Key Light
 	var sun = DirectionalLight3D.new()
-	sun.position = Vector3(10, 20, 10)
-	sun.rotation_degrees = Vector3(-45, 35, 0)
-	sun.light_energy = 1.2
-	sun.light_color = Color(0.7, 0.8, 1.0)
+	sun.position = Vector3(15, 25, 15)
+	sun.rotation_degrees = Vector3(-55, 40, 0)
+	sun.light_energy = 1.8
+	sun.light_color = Color(0.9, 0.95, 1.0)
 	sun.shadow_enabled = true
 	add_child(sun)
