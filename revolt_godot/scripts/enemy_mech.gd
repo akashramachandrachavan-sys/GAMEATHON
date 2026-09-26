@@ -371,7 +371,9 @@ func _fire_single_shot() -> void:
 	else:
 		get_tree().root.add_child(m_light)
 	m_light.global_position = spawn_pos
-	get_tree().create_timer(0.08).timeout.connect(func(): if is_instance_valid(m_light): m_light.queue_free())
+	var lt = m_light.create_tween()
+	lt.tween_interval(0.08)
+	lt.tween_callback(m_light.queue_free)
 
 func _spawn_footstep_shockwave() -> void:
 	var player = get_tree().get_first_node_in_group("player")
@@ -504,7 +506,6 @@ func _spawn_massive_cinematic_explosion() -> void:
 	ft.tween_property(fireball, "scale", Vector3(2.5, 2.5, 2.5), 0.32).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	ft.parallel().tween_property(f_mat, "albedo_color:a", 0.0, 0.32)
 	ft.tween_callback(fireball.queue_free)
-	get_tree().create_timer(0.38).timeout.connect(func(): if is_instance_valid(fireball): fireball.queue_free())
 	
 	# Debris Particles
 	var debris = CPUParticles3D.new()
@@ -520,7 +521,9 @@ func _spawn_massive_cinematic_explosion() -> void:
 	debris.color = Color(1.0, 0.45, 0.1)
 	root.add_child(debris)
 	debris.global_position = spawn_pos
-	get_tree().create_timer(0.85).timeout.connect(func(): if is_instance_valid(debris): debris.queue_free())
+	var dt = debris.create_tween()
+	dt.tween_interval(0.85)
+	dt.tween_callback(debris.queue_free)
 
 	# Ground Shockwave
 	var ring = MeshInstance3D.new()
@@ -542,7 +545,6 @@ func _spawn_massive_cinematic_explosion() -> void:
 	rt.tween_property(ring, "scale", Vector3(10.0 * scale.y, 1.0, 10.0 * scale.y), 0.32).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	rt.parallel().tween_property(r_mat, "albedo_color:a", 0.0, 0.32)
 	rt.tween_callback(ring.queue_free)
-	get_tree().create_timer(0.38).timeout.connect(func(): if is_instance_valid(ring): ring.queue_free())
 
 func _setup_collision() -> void:
 	var col = CollisionShape3D.new()

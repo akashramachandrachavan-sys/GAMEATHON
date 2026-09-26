@@ -153,8 +153,6 @@ func _spawn_impact_burst() -> void:
 	root.add_child(p)
 	p.global_position = global_position
 	
-	# Safe timer on SceneTree — guaranteed deletion
-	get_tree().create_timer(0.35).timeout.connect(func():
-		if is_instance_valid(p):
-			p.queue_free()
-	)
+	var pt = p.create_tween()
+	pt.tween_interval(0.35)
+	pt.tween_callback(p.queue_free)

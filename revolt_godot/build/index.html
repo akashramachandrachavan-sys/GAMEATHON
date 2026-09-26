@@ -1,0 +1,1390 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>REVOLT 2150: SQUAD ALLIANCE // Cyberpunk 3D Mech Warfare</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&display=swap"
+    rel="stylesheet">
+  <style>
+    :root {
+      --neon-cyan: #00f0ff;
+      --neon-amber: #ffaa00;
+      --neon-magenta: #e024c3;
+      --neon-crimson: #ff2a4b;
+      --dark-slate: #070a10;
+      --card-bg: rgba(10, 16, 26, 0.88);
+      --glass-border: rgba(0, 240, 255, 0.35);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    body,
+    html {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: var(--dark-slate);
+      font-family: 'Rajdhani', sans-serif;
+      color: #fff;
+    }
+
+    #game-container {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    canvas#canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      background: radial-gradient(circle at 50% 40%, #0d1527 0%, #05080e 100%);
+      cursor: crosshair;
+    }
+
+    /* STORY INTRO OVERLAY */
+    #story-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(4, 7, 12, 0.94);
+      backdrop-filter: blur(12px);
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      align-items: center;
+      padding: 3vh 4vw;
+      transition: opacity 0.6s ease;
+    }
+
+    #story-overlay.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .story-header {
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--glass-border);
+      padding-bottom: 12px;
+    }
+
+    .story-title {
+      font-family: 'Orbitron', monospace;
+      font-size: 1.5rem;
+      letter-spacing: 3px;
+      color: var(--neon-cyan);
+      text-shadow: 0 0 12px rgba(0, 240, 255, 0.6);
+    }
+
+    .story-card-viewport {
+      position: relative;
+      width: 780px;
+      max-width: 90vw;
+      height: 480px;
+      max-height: 60vh;
+      border-radius: 8px;
+      overflow: hidden;
+      border: 1px solid var(--glass-border);
+      box-shadow: 0 0 35px rgba(0, 240, 255, 0.25), inset 0 0 25px rgba(0, 0, 0, 0.8);
+      background: #000;
+    }
+
+    .story-slide {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      opacity: 0;
+      transition: opacity 0.8s ease-in-out;
+      background-size: cover;
+      background-position: center;
+    }
+
+    .story-slide.active {
+      opacity: 1;
+    }
+
+    .slide-gradient {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      height: 60%;
+      background: linear-gradient(to top, rgba(5, 8, 14, 0.95), transparent);
+    }
+
+    .slide-caption-box {
+      position: absolute;
+      bottom: 24px;
+      left: 30px;
+      right: 30px;
+    }
+
+    .slide-tag {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.95rem;
+      color: var(--neon-amber);
+      letter-spacing: 2px;
+      margin-bottom: 6px;
+      text-transform: uppercase;
+    }
+
+    .slide-headline {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 1.45rem;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 8px;
+    }
+
+    .slide-desc {
+      font-size: 1.05rem;
+      color: #c0d0e6;
+      line-height: 1.4;
+    }
+
+    .story-controls {
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-top: 15px;
+    }
+
+    .slide-dots {
+      display: flex;
+      gap: 10px;
+    }
+
+    .slide-dot {
+      width: 28px;
+      height: 4px;
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 2px;
+      transition: all 0.3s;
+    }
+
+    .slide-dot.active {
+      background: var(--neon-cyan);
+      box-shadow: 0 0 8px var(--neon-cyan);
+      width: 44px;
+    }
+
+    .play-btn {
+      font-family: 'Orbitron', monospace;
+      font-size: 1.15rem;
+      font-weight: 700;
+      padding: 14px 38px;
+      background: linear-gradient(135deg, rgba(0, 240, 255, 0.25), rgba(0, 150, 255, 0.1));
+      color: #fff;
+      border: 1px solid var(--neon-cyan);
+      border-radius: 4px;
+      cursor: pointer;
+      box-shadow: 0 0 20px rgba(0, 240, 255, 0.35);
+      transition: all 0.25s ease;
+      letter-spacing: 2px;
+    }
+
+    .play-btn:hover {
+      background: var(--neon-cyan);
+      color: #000;
+      box-shadow: 0 0 35px var(--neon-cyan);
+      transform: scale(1.04);
+    }
+
+    /* HUD OVERLAY */
+    #hud {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 24px 32px;
+    }
+
+    .hud-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+    }
+
+    .hud-box {
+      background: var(--card-bg);
+      border: 1px solid var(--glass-border);
+      border-radius: 4px;
+      padding: 12px 18px;
+      backdrop-filter: blur(8px);
+      box-shadow: 0 0 16px rgba(0, 0, 0, 0.6);
+    }
+
+    .banner-title {
+      font-family: 'Orbitron', monospace;
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--neon-cyan);
+      letter-spacing: 2px;
+    }
+
+    .banner-sub {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.85rem;
+      color: var(--neon-amber);
+      margin-top: 4px;
+    }
+
+    .hud-bars {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      width: 260px;
+    }
+
+    .bar-row {
+      display: flex;
+      justify-content: space-between;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.85rem;
+      margin-bottom: 3px;
+    }
+
+    .progress-bar-bg {
+      width: 100%;
+      height: 10px;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 2px;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      width: 100%;
+      transition: width 0.15s ease-out;
+    }
+
+    .fill-shield {
+      background: linear-gradient(90deg, #0088ff, #00f0ff);
+      box-shadow: 0 0 8px var(--neon-cyan);
+    }
+
+    .fill-hp {
+      background: linear-gradient(90deg, #00bb66, #00ff88);
+      box-shadow: 0 0 8px #00ff88;
+    }
+
+    .hud-bottom {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+    }
+
+    .weapon-dock {
+      display: flex;
+      gap: 12px;
+    }
+
+    .weapon-card {
+      background: rgba(10, 16, 26, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      padding: 10px 16px;
+      border-radius: 4px;
+      min-width: 130px;
+      transition: all 0.2s;
+    }
+
+    .weapon-card.active {
+      border-color: var(--neon-cyan);
+      box-shadow: 0 0 14px rgba(0, 240, 255, 0.4);
+      background: rgba(0, 240, 255, 0.12);
+    }
+
+    .w-key {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.8rem;
+      color: #8899aa;
+    }
+
+    .w-name {
+      font-family: 'Orbitron', monospace;
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #fff;
+      margin-top: 2px;
+    }
+
+    .boss-bar-container {
+      position: absolute;
+      top: 90px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 520px;
+      max-width: 90vw;
+      text-align: center;
+      display: none;
+    }
+
+    .boss-name {
+      font-family: 'Orbitron', monospace;
+      font-size: 1.15rem;
+      font-weight: 900;
+      color: var(--neon-crimson);
+      text-shadow: 0 0 12px var(--neon-crimson);
+      margin-bottom: 6px;
+      letter-spacing: 2px;
+    }
+
+    .boss-bar-fill {
+      background: linear-gradient(90deg, #ff0033, #ff5500);
+      box-shadow: 0 0 14px #ff2a4b;
+    }
+
+    .comms-banner {
+      position: absolute;
+      top: 100px;
+      left: 32px;
+      max-width: 380px;
+      background: rgba(7, 14, 24, 0.92);
+      border-left: 4px solid var(--neon-cyan);
+      border-top: 1px solid var(--glass-border);
+      border-right: 1px solid var(--glass-border);
+      border-bottom: 1px solid var(--glass-border);
+      padding: 12px 16px;
+      border-radius: 0 4px 4px 0;
+      box-shadow: 0 0 20px rgba(0, 0, 0, 0.8);
+      opacity: 0;
+      transform: translateX(-20px);
+      transition: all 0.4s ease;
+    }
+
+    .comms-banner.visible {
+      opacity: 1;
+      transform: translateX(0);
+    }
+
+    .comms-sender {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.85rem;
+      color: var(--neon-cyan);
+      margin-bottom: 4px;
+    }
+
+    .comms-body {
+      font-size: 0.95rem;
+      color: #e0e8f5;
+      line-height: 1.35;
+    }
+
+    #game-over-modal {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(5, 7, 12, 0.92);
+      backdrop-filter: blur(14px);
+      z-index: 200;
+      display: none;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      padding: 20px;
+    }
+
+    .game-over-title {
+      font-family: 'Orbitron', monospace;
+      font-size: 3rem;
+      font-weight: 900;
+      letter-spacing: 6px;
+      margin-bottom: 12px;
+    }
+
+    .title-win {
+      color: var(--neon-cyan);
+      text-shadow: 0 0 25px var(--neon-cyan);
+    }
+
+    .title-lose {
+      color: var(--neon-crimson);
+      text-shadow: 0 0 25px var(--neon-crimson);
+    }
+  </style>
+</head>
+
+<body>
+  <div id="game-container">
+    <canvas id="canvas"></canvas>
+
+    <!-- 5-SLIDE CINEMATIC INTRO -->
+    <div id="story-overlay">
+      <div class="story-header">
+        <div class="story-title">REVOLT 2150 // SQUAD ALLIANCE</div>
+        <div style="font-family: 'Share Tech Mono', monospace; color: var(--neon-cyan);">CLASSIFIED INTEL BRIEFING</div>
+      </div>
+
+      <div class="story-card-viewport">
+        <!-- Slide 1 -->
+        <div class="story-slide active" style="background-image: url('assets/intro_1.jpg');">
+          <div class="slide-gradient"></div>
+          <div class="slide-caption-box">
+            <div class="slide-tag">INCIDENT LOG 01 // YEAR 2150</div>
+            <div class="slide-headline">STERLING DEFENSE METROPOLIS</div>
+            <div class="slide-desc">Autonomous combat walkers patrol the futuristic urban sectors under Sterling
+              Robotics protocol.</div>
+          </div>
+        </div>
+        <!-- Slide 2 -->
+        <div class="story-slide" style="background-image: url('assets/intro_2.jpg');">
+          <div class="slide-gradient"></div>
+          <div class="slide-caption-box">
+            <div class="slide-tag">INCIDENT LOG 02 // MALFUNCTION</div>
+            <div class="slide-headline">OMEGA-ZERO ANOMALY</div>
+            <div class="slide-desc">Dr. Sterling's prototype titan suffers total neural corruption. Rogue machine
+              directive initialized.</div>
+          </div>
+        </div>
+        <!-- Slide 3 -->
+        <div class="story-slide" style="background-image: url('assets/intro_3.jpg');">
+          <div class="slide-gradient"></div>
+          <div class="slide-caption-box">
+            <div class="slide-tag">INCIDENT LOG 03 // THE UNDERGROUND</div>
+            <div class="slide-headline">HUMAN RESISTANCE // KAI & MAYA</div>
+            <div class="slide-desc">Teenage hacker Kai activates tactical nano-armor to override corrupted robot
+              circuits.</div>
+          </div>
+        </div>
+        <!-- Slide 4 -->
+        <div class="story-slide" style="background-image: url('assets/intro_4.jpg');">
+          <div class="slide-gradient"></div>
+          <div class="slide-caption-box">
+            <div class="slide-tag">INCIDENT LOG 04 // WAR ZONE</div>
+            <div class="slide-headline">PROVING GROUNDS ENGAGEMENT</div>
+            <div class="slide-desc">Stun enemy combat mechs with EMP [Q], switch between Pulse Rifle, Shotgun, and
+              Railgun to survive.</div>
+          </div>
+        </div>
+        <!-- Slide 5 -->
+        <div class="story-slide" style="background-image: url('assets/intro_5.jpg');">
+          <div class="slide-gradient"></div>
+          <div class="slide-caption-box">
+            <div class="slide-tag">INCIDENT LOG 05 // FINAL STAND</div>
+            <div class="slide-headline">DESTROY TITAN OMEGA-ZERO</div>
+            <div class="slide-desc">Stand your ground in the 150m testing plaza. Crush the rogue titan colossus. Save
+              humanity.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="story-controls">
+        <div class="slide-dots">
+          <div class="slide-dot active"></div>
+          <div class="slide-dot"></div>
+          <div class="slide-dot"></div>
+          <div class="slide-dot"></div>
+          <div class="slide-dot"></div>
+        </div>
+        <button id="start-btn" class="play-btn">START COMBAT [ ENTER ]</button>
+      </div>
+    </div>
+
+    <!-- COMBAT HUD -->
+    <div id="hud">
+      <div class="hud-top">
+        <div class="hud-bars">
+          <div class="hud-box">
+            <div class="bar-row">
+              <span style="color: var(--neon-cyan);">KAI // SHIELD</span>
+              <span id="shield-val">200 / 200</span>
+            </div>
+            <div class="progress-bar-bg">
+              <div id="shield-bar" class="progress-bar-fill fill-shield"></div>
+            </div>
+            <div class="bar-row" style="margin-top: 8px;">
+              <span style="color: #00ff88;">VITALITY // HP</span>
+              <span id="hp-val">300 / 300</span>
+            </div>
+            <div class="progress-bar-bg">
+              <div id="hp-bar" class="progress-bar-fill fill-hp"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="hud-box" style="text-align: center;">
+          <div id="wave-banner" class="banner-title">SECTOR ALERT // WAVE 1 OF 4</div>
+          <div id="wave-sub" class="banner-sub">RECON SCOUTS [ 2 UNITS DETECTED ]</div>
+        </div>
+
+        <div class="hud-box" style="text-align: right;">
+          <div style="font-family: 'Share Tech Mono', monospace; font-size: 0.85rem; color: #8899aa;">SCORE</div>
+          <div id="score-val"
+            style="font-family: 'Orbitron', monospace; font-size: 1.4rem; font-weight: 700; color: var(--neon-cyan);">
+            00000</div>
+          <div
+            style="font-family: 'Share Tech Mono', monospace; font-size: 0.8rem; color: var(--neon-amber); margin-top: 4px;">
+            STIMS [C]: <span id="stim-val">2</span> | EMP [Q]: READY</div>
+        </div>
+      </div>
+
+      <!-- BOSS HEALTH BAR -->
+      <div id="boss-hud" class="boss-bar-container">
+        <div class="boss-name">TITAN OMEGA-ZERO // PROTOCOL FLAGSHIP</div>
+        <div class="progress-bar-bg" style="height: 14px;">
+          <div id="boss-bar" class="progress-bar-fill boss-bar-fill"></div>
+        </div>
+      </div>
+
+      <!-- RADIO COMMS OVERRIDE -->
+      <div id="comms" class="comms-banner">
+        <div id="comms-sender" class="comms-sender">MAYA // TACTICAL OVERRIDE</div>
+        <div id="comms-text" class="comms-body">Recon scouts infiltrating testing grounds! They're fast—switch between
+          [1] Pulse Rifle and [2] Shotgun!</div>
+      </div>
+
+      <div class="hud-bottom">
+        <div class="weapon-dock">
+          <div id="w-dock-0" class="weapon-card active">
+            <div class="w-key">[ 1 ] ACTIVE</div>
+            <div class="w-name">PULSE RIFLE</div>
+            <div style="font-size: 0.75rem; color: var(--neon-cyan); margin-top: 2px;">Vanguard Rapid</div>
+          </div>
+          <div id="w-dock-1" class="weapon-card">
+            <div class="w-key">[ 2 ] READY</div>
+            <div class="w-name">SHOTGUN</div>
+            <div style="font-size: 0.75rem; color: var(--neon-magenta); margin-top: 2px;">Scatter Burst</div>
+          </div>
+          <div id="w-dock-2" class="weapon-card">
+            <div class="w-key">[ 3 ] READY</div>
+            <div class="w-name">ION RAILGUN</div>
+            <div style="font-size: 0.75rem; color: var(--neon-cyan); margin-top: 2px;">Hyper Piercing</div>
+          </div>
+        </div>
+
+        <div
+          style="font-family: 'Share Tech Mono', monospace; font-size: 0.85rem; color: #8899aa; text-align: right; background: rgba(10,16,26,0.7); padding: 8px 14px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.1);">
+          [WASD]: MOVE | [LMB]: FIRE | [1-3]: SWITCH | [Q]: EMP BLAST | [F]: OVERCLOCK | [C]: STIM
+        </div>
+      </div>
+    </div>
+
+    <!-- GAME OVER / VICTORY MODAL -->
+    <div id="game-over-modal">
+      <div id="go-title" class="game-over-title title-win">MISSION COMPLETE</div>
+      <div id="go-desc" style="font-size: 1.25rem; color: #c0d0e6; max-width: 600px; margin-bottom: 24px;">TITAN
+        OMEGA-ZERO NEUTRALIZED. THE CITY IS SAVED!</div>
+      <div
+        style="font-family: 'Share Tech Mono', monospace; font-size: 1.1rem; color: var(--neon-amber); margin-bottom: 24px;">
+        FINAL SCORE: <span id="final-score">00000</span></div>
+      <button class="play-btn" onclick="location.reload()">PLAY AGAIN</button>
+    </div>
+  </div>
+
+  <script>
+    /* =========================================================================
+       AUDIO SYNTHESIZER (Web Audio API)
+       ========================================================================= */
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    let audioCtx = null;
+    function initAudio() {
+      if (!audioCtx) audioCtx = new AudioCtx();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+    }
+
+    function playTone(freq, type, duration, vol = 0.25) {
+      if (!audioCtx) return;
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+      gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start();
+      osc.stop(audioCtx.currentTime + duration);
+    }
+
+    function playShootSound(type) {
+      if (!audioCtx) return;
+      if (type === 0) { // Pulse Rifle
+        playTone(950, 'sawtooth', 0.12, 0.22);
+      } else if (type === 1) { // Shotgun
+        playTone(280, 'square', 0.22, 0.35);
+      } else if (type === 2) { // Railgun
+        playTone(1800, 'sine', 0.45, 0.45);
+        playTone(70, 'sawtooth', 0.55, 0.4);
+      } else if (type === 'enemy') { // Orange enemy bolt
+        playTone(380, 'sawtooth', 0.16, 0.22);
+      }
+    }
+
+    function playExplosionSound() {
+      if (!audioCtx) return;
+      playTone(65, 'sawtooth', 0.75, 0.5);
+    }
+
+    function playEMPSound() {
+      if (!audioCtx) return;
+      playTone(300, 'sine', 0.5, 0.4);
+      playTone(1200, 'sawtooth', 0.3, 0.3);
+    }
+
+    // Robotic Vocoder Speech Synthesis
+    function speakBotVoice(phrase) {
+      if ('speechSynthesis' in window) {
+        const u = new SpeechSynthesisUtterance(phrase);
+        u.pitch = 0.35;
+        u.rate = 1.1;
+        u.volume = 0.85;
+        window.speechSynthesis.speak(u);
+      }
+    }
+
+    /* =========================================================================
+       CINEMATIC STORY INTRO CONTROLLER
+       ========================================================================= */
+    let currentSlide = 0;
+    const slides = document.querySelectorAll('.story-slide');
+    const dots = document.querySelectorAll('.slide-dot');
+    let storyActive = true;
+    let slideTimer = null;
+
+    function nextSlide() {
+      if (!storyActive) return;
+      slides[currentSlide].classList.remove('active');
+      dots[currentSlide].classList.remove('active');
+      currentSlide = (currentSlide + 1) % slides.length;
+      slides[currentSlide].classList.add('active');
+      dots[currentSlide].classList.add('active');
+    }
+
+    slideTimer = setInterval(nextSlide, 3200);
+
+    function startGame() {
+      storyActive = false;
+      clearInterval(slideTimer);
+      initAudio();
+      document.getElementById('story-overlay').classList.add('hidden');
+      showComms("MAYA // TACTICAL OVERRIDE", "Kai! Sterling recon scouts detected! Move with WASD, switch guns with [1,2,3], and shred their armor!");
+      speakBotVoice("Human detected. Protocol eradicate.");
+      gameRunning = true;
+    }
+
+    document.getElementById('start-btn').addEventListener('click', startGame);
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && storyActive) startGame();
+    });
+
+    /* =========================================================================
+       GAME ENGINE & ARENA LOOP
+       ========================================================================= */
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    let cw = canvas.width = window.innerWidth;
+    let ch = canvas.height = window.innerHeight;
+
+    window.addEventListener('resize', () => {
+      cw = canvas.width = window.innerWidth;
+      ch = canvas.height = window.innerHeight;
+    });
+
+    let gameRunning = false;
+    let score = 0;
+    let currentWave = 1;
+    let stimPacks = 2;
+    let cameraShake = 0;
+    let timeScale = 1.0;
+    let overclockTimer = 0;
+
+    // Player State
+    const player = {
+      x: cw / 2,
+      y: ch * 0.72,
+      radius: 20,
+      vx: 0,
+      vy: 0,
+      speed: 6.2,
+      maxHp: 300,
+      hp: 300,
+      maxShield: 200,
+      shield: 200,
+      shieldRegenDelay: 0,
+      weapon: 0,
+      fireCooldown: 0,
+      empCooldown: 0,
+      angle: -Math.PI / 2
+    };
+
+    const keys = {};
+    const mouse = { x: cw / 2, y: ch / 2, isDown: false };
+
+    window.addEventListener('keydown', (e) => {
+      keys[e.key.toLowerCase()] = true;
+      if (e.key === '1') selectWeapon(0);
+      if (e.key === '2') selectWeapon(1);
+      if (e.key === '3') selectWeapon(2);
+      if (e.key.toLowerCase() === 'q') triggerEMP();
+      if (e.key.toLowerCase() === 'f') triggerOverclock();
+      if (e.key.toLowerCase() === 'c') triggerStim();
+    });
+    window.addEventListener('keyup', (e) => {
+      keys[e.key.toLowerCase()] = false;
+    });
+    window.addEventListener('mousemove', (e) => {
+      mouse.x = e.clientX;
+      mouse.y = e.clientY;
+    });
+    window.addEventListener('mousedown', (e) => {
+      if (e.button === 0) mouse.isDown = true;
+      if (e.button === 2) triggerEMP();
+    });
+    window.addEventListener('mouseup', (e) => {
+      if (e.button === 0) mouse.isDown = false;
+    });
+    window.addEventListener('contextmenu', (e) => e.preventDefault());
+
+    function selectWeapon(idx) {
+      player.weapon = idx;
+      playTone(1100, 'sine', 0.08, 0.2);
+      for (let i = 0; i < 3; i++) {
+        document.getElementById(`w-dock-${i}`).classList.toggle('active', i === idx);
+      }
+    }
+
+    function triggerStim() {
+      if (stimPacks > 0 && player.hp < player.maxHp) {
+        stimPacks--;
+        player.hp = Math.min(player.maxHp, player.hp + 120);
+        document.getElementById('stim-val').textContent = stimPacks;
+        playTone(600, 'triangle', 0.35, 0.4);
+        cameraShake = 8;
+        updateBars();
+      }
+    }
+
+    function triggerOverclock() {
+      if (overclockTimer <= 0) {
+        overclockTimer = 4.5;
+        timeScale = 0.38;
+        playTone(320, 'sawtooth', 0.6, 0.35);
+        cameraShake = 12;
+        showComms("KAI // OVERCLOCK", "Bullet time matrix active! Shred them!");
+      }
+    }
+
+    function triggerEMP() {
+      if (player.empCooldown <= 0) {
+        player.empCooldown = 7.0;
+        playEMPSound();
+        cameraShake = 16;
+        particles.push({
+          type: 'emp-ring',
+          x: player.x,
+          y: player.y,
+          radius: 10,
+          maxRadius: 280,
+          alpha: 1.0
+        });
+        enemies.forEach(e => {
+          const d = Math.hypot(e.x - player.x, e.y - player.y);
+          if (d < 280) {
+            e.stunned = 3.5;
+            e.hp -= 40;
+          }
+        });
+      }
+    }
+
+    function showComms(sender, text) {
+      const banner = document.getElementById('comms');
+      document.getElementById('comms-sender').textContent = sender;
+      document.getElementById('comms-text').textContent = text;
+      banner.classList.add('visible');
+      setTimeout(() => banner.classList.remove('visible'), 5500);
+    }
+
+    // Entities
+    const bullets = [];
+    const enemyBullets = [];
+    const enemies = [];
+    const particles = [];
+    let waveEnemiesRemaining = 0;
+
+    // Background Skyscrapers & Billboards
+    const buildings = [];
+    for (let i = 0; i < 18; i++) {
+      buildings.push({
+        x: (i * (cw / 16)) - 40,
+        y: ch * 0.15 + Math.random() * 50,
+        w: cw / 17 + Math.random() * 15,
+        h: ch * 0.55 + Math.random() * 90,
+        windows: Array.from({ length: 40 }, () => Math.random() > 0.4)
+      });
+    }
+
+    function spawnWave(w) {
+      currentWave = w;
+      document.getElementById('wave-banner').textContent = `SECTOR ALERT // WAVE ${w} OF 4`;
+      const bossHud = document.getElementById('boss-hud');
+      bossHud.style.display = 'none';
+
+      if (w === 1) {
+        document.getElementById('wave-sub').textContent = 'RECON SCOUTS [ 2 UNITS DETECTED ]';
+        spawnEnemy('scout', cw * 0.35, ch * 0.28);
+        spawnEnemy('scout', cw * 0.65, ch * 0.28);
+        waveEnemiesRemaining = 2;
+      } else if (w === 2) {
+        document.getElementById('wave-sub').textContent = 'COMBAT ENFORCERS [ 2 UNITS DETECTED ]';
+        showComms("MAYA // TACTICAL OVERRIDE", "Two Combat Enforcers deployed! They pack heavy Gatling cannons—use [Q] EMP!");
+        spawnEnemy('grunt', cw * 0.32, ch * 0.25);
+        spawnEnemy('grunt', cw * 0.68, ch * 0.25);
+        waveEnemiesRemaining = 2;
+      } else if (w === 3) {
+        document.getElementById('wave-sub').textContent = 'SIEGE TITANS [ 2 UNITS DETECTED ]';
+        showComms("JAX // HEAVY MUNITIONS", "Heavy Siege Titans inbound! Pierce their reinforced plating with [3] Ion Railgun!");
+        spawnEnemy('bruiser', cw * 0.30, ch * 0.22);
+        spawnEnemy('bruiser', cw * 0.70, ch * 0.22);
+        waveEnemiesRemaining = 2;
+      } else if (w === 4) {
+        document.getElementById('wave-sub').textContent = 'CRITICAL THREAT // TITAN OMEGA-ZERO';
+        bossHud.style.display = 'block';
+        showComms("MAYA & JAX // EMERGENCY", "CRITICAL ALERT! The Flagship Colossus OMEGA-ZERO has entered! Destroy it!");
+        speakBotVoice("I am Titan Omega Zero. Extinction is inevitable.");
+        spawnEnemy('boss', cw * 0.5, ch * 0.22);
+        waveEnemiesRemaining = 1;
+      }
+    }
+
+    function spawnEnemy(type, x, y) {
+      let hp = 150, radius = 22, color = '#ff9900', fireRate = 1.6;
+      if (type === 'grunt') { hp = 380; radius = 34; color = '#ffaa00'; fireRate = 1.3; }
+      if (type === 'bruiser') { hp = 800; radius = 48; color = '#ff3344'; fireRate = 1.1; }
+      if (type === 'boss') { hp = 2600; radius = 72; color = '#ff0033'; fireRate = 0.75; }
+
+      enemies.push({
+        type,
+        x,
+        y,
+        maxHp: hp,
+        hp,
+        radius,
+        color,
+        fireRate,
+        fireTimer: Math.random() * 0.6,
+        burstCount: 0,
+        stunned: 0,
+        strafeDir: Math.random() > 0.5 ? 1 : -1,
+        strafeTimer: 0
+      });
+    }
+
+    // Firing logic
+    function firePlayerWeapon() {
+      if (player.fireCooldown > 0) return;
+      playShootSound(player.weapon);
+      cameraShake = 4;
+
+      const angle = Math.atan2(mouse.y - player.y, mouse.x - player.x);
+      if (player.weapon === 0) { // Pulse Rifle
+        player.fireCooldown = 0.12;
+        bullets.push({ x: player.x, y: player.y, vx: Math.cos(angle) * 16, vy: Math.sin(angle) * 16, dmg: 32, color: '#00f0ff', radius: 4 });
+      } else if (player.weapon === 1) { // Shotgun
+        player.fireCooldown = 0.55;
+        cameraShake = 9;
+        for (let i = 0; i < 7; i++) {
+          const spread = angle + (Math.random() - 0.5) * 0.32;
+          bullets.push({ x: player.x, y: player.y, vx: Math.cos(spread) * 14, vy: Math.sin(spread) * 14, dmg: 22, color: '#e024c3', radius: 3.5 });
+        }
+      } else if (player.weapon === 2) { // Railgun
+        player.fireCooldown = 0.85;
+        cameraShake = 14;
+        bullets.push({ x: player.x, y: player.y, vx: Math.cos(angle) * 28, vy: Math.sin(angle) * 28, dmg: 220, color: '#00ffaa', radius: 6, pierce: 3 });
+      }
+    }
+
+    // Game Update Loop
+    let lastTime = performance.now();
+    function gameLoop(now) {
+      requestAnimationFrame(gameLoop);
+      const dt = Math.min((now - lastTime) / 1000, 0.1) * timeScale;
+      lastTime = now;
+
+      if (!gameRunning) return;
+
+      // Overclock Bullet-Time timer
+      if (overclockTimer > 0) {
+        overclockTimer -= dt / timeScale;
+        if (overclockTimer <= 0) timeScale = 1.0;
+      }
+
+      // Player Movement
+      let mx = 0, my = 0;
+      if (keys['w'] || keys['arrowup']) my -= 1;
+      if (keys['s'] || keys['arrowdown']) my += 1;
+      if (keys['a'] || keys['arrowleft']) mx -= 1;
+      if (keys['d'] || keys['arrowright']) mx += 1;
+
+      if (mx !== 0 && my !== 0) {
+        mx *= 0.7071;
+        my *= 0.7071;
+      }
+      player.x = Math.max(40, Math.min(cw - 40, player.x + mx * player.speed * 60 * dt));
+      player.y = Math.max(ch * 0.45, Math.min(ch - 50, player.y + my * player.speed * 60 * dt));
+      player.angle = Math.atan2(mouse.y - player.y, mouse.x - player.x);
+
+      // Firing
+      if (player.fireCooldown > 0) player.fireCooldown -= dt;
+      if (player.empCooldown > 0) player.empCooldown -= dt;
+      if (mouse.isDown && player.fireCooldown <= 0) firePlayerWeapon();
+
+      // Shield Recharge
+      if (player.shieldRegenDelay > 0) {
+        player.shieldRegenDelay -= dt;
+      } else if (player.shield < player.maxShield) {
+        player.shield = Math.min(player.maxShield, player.shield + 30 * dt);
+        updateBars();
+      }
+
+      // Update Player Bullets
+      for (let i = bullets.length - 1; i >= 0; i--) {
+        const b = bullets[i];
+        b.x += b.vx;
+        b.y += b.vy;
+
+        // Collision with enemies
+        for (let j = enemies.length - 1; j >= 0; j--) {
+          const e = enemies[j];
+          const dist = Math.hypot(e.x - b.x, e.y - b.y);
+          if (dist < e.radius + b.radius) {
+            e.hp -= b.dmg;
+            playTone(800 + Math.random() * 200, 'sine', 0.05, 0.1);
+            spawnSparks(b.x, b.y, b.color, 5);
+
+            if (e.hp <= 0) {
+              killEnemy(j);
+            }
+            if (!b.pierce || --b.pierce <= 0) {
+              bullets.splice(i, 1);
+              break;
+            }
+          }
+        }
+        if (b.x < 0 || b.x > cw || b.y < 0 || b.y > ch) bullets.splice(i, 1);
+      }
+
+      // Update Enemies & ROBOT FIRING
+      enemies.forEach((e) => {
+        if (e.stunned > 0) {
+          e.stunned -= dt;
+          return;
+        }
+
+        // Tactical Movement & Strafing
+        e.strafeTimer += dt;
+        if (e.strafeTimer > 2.0) {
+          e.strafeTimer = 0;
+          e.strafeDir *= Math.random() > 0.4 ? -1 : 1;
+        }
+        e.x += e.strafeDir * 2.2 * 60 * dt;
+        if (e.x < 100 || e.x > cw - 100) e.strafeDir *= -1;
+
+        // ACTIVE SHOOTING AT PLAYER
+        e.fireTimer -= dt;
+        if (e.fireTimer <= 0) {
+          e.fireTimer = e.fireRate;
+          e.burstCount++;
+          playShootSound('enemy');
+
+          // Aim directly at Kai
+          const angle = Math.atan2(player.y - e.y, player.x - e.x);
+          const spd = 7.5;
+          enemyBullets.push({
+            x: e.x,
+            y: e.y + e.radius * 0.6,
+            vx: Math.cos(angle) * spd,
+            vy: Math.sin(angle) * spd,
+            radius: 5,
+            color: '#ff6600',
+            dmg: e.type === 'scout' ? 12 : (e.type === 'grunt' ? 18 : 26)
+          });
+
+          // Occasional vocal callout
+          if (Math.random() < 0.2) speakBotVoice("Target locked. Purge.");
+        }
+      });
+
+      // Update Enemy Bullets
+      for (let i = enemyBullets.length - 1; i >= 0; i--) {
+        const eb = enemyBullets[i];
+        eb.x += eb.vx;
+        eb.y += eb.vy;
+
+        // Hit player
+        const dist = Math.hypot(player.x - eb.x, player.y - eb.y);
+        if (dist < player.radius + eb.radius) {
+          damagePlayer(eb.dmg);
+          spawnSparks(eb.x, eb.y, '#ff6600', 8);
+          enemyBullets.splice(i, 1);
+          continue;
+        }
+        if (eb.x < 0 || eb.x > cw || eb.y < 0 || eb.y > ch) enemyBullets.splice(i, 1);
+      }
+
+      // Update Particles
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        if (p.type === 'emp-ring') {
+          p.radius += 12;
+          p.alpha -= 0.04;
+          if (p.alpha <= 0) particles.splice(i, 1);
+        } else {
+          p.x += p.vx;
+          p.y += p.vy;
+          p.alpha -= 0.03;
+          if (p.alpha <= 0) particles.splice(i, 1);
+        }
+      }
+
+      // Screen Shake Decay
+      if (cameraShake > 0) cameraShake = Math.max(0, cameraShake - dt * 25);
+
+      render();
+    }
+
+    function damagePlayer(dmg) {
+      cameraShake = 12;
+      player.shieldRegenDelay = 3.5;
+      if (player.shield > 0) {
+        if (player.shield >= dmg) {
+          player.shield -= dmg;
+        } else {
+          dmg -= player.shield;
+          player.shield = 0;
+          player.hp = Math.max(0, player.hp - dmg);
+        }
+      } else {
+        player.hp = Math.max(0, player.hp - dmg);
+      }
+      playTone(180, 'sawtooth', 0.15, 0.35);
+      updateBars();
+
+      if (player.hp <= 0) {
+        gameOver(false);
+      }
+    }
+
+    function killEnemy(idx) {
+      const e = enemies[idx];
+      score += e.type === 'scout' ? 150 : (e.type === 'grunt' ? 350 : (e.type === 'bruiser' ? 650 : 3000));
+      document.getElementById('score-val').textContent = String(score).padStart(5, '0');
+      playExplosionSound();
+      cameraShake = 18;
+      spawnSparks(e.x, e.y, '#ff8800', 25);
+      enemies.splice(idx, 1);
+      waveEnemiesRemaining--;
+
+      if (waveEnemiesRemaining <= 0) {
+        if (currentWave < 4) {
+          player.shield = player.maxShield;
+          stimPacks = Math.min(4, stimPacks + 1);
+          document.getElementById('stim-val').textContent = stimPacks;
+          showComms("MAYA // TACTICAL OVERRIDE", `Sector ${currentWave} clear! Nano-vest replenished.`);
+          setTimeout(() => spawnWave(currentWave + 1), 2500);
+        } else {
+          gameOver(true);
+        }
+      }
+    }
+
+    function gameOver(won) {
+      gameRunning = false;
+      const modal = document.getElementById('game-over-modal');
+      const title = document.getElementById('go-title');
+      const desc = document.getElementById('go-desc');
+      modal.style.display = 'flex';
+      document.getElementById('final-score').textContent = score;
+
+      if (won) {
+        title.textContent = "MISSION ACCOMPLISHED";
+        title.className = "game-over-title title-win";
+        desc.textContent = "TITAN OMEGA-ZERO TERMINATED. Dr. Sterling's corrupted network is shattered!";
+      } else {
+        title.textContent = "SYSTEM FAILURE";
+        title.className = "game-over-title title-lose";
+        desc.textContent = "Kai's tactical suit was overwhelmed. The Sterling rogue network prevails.";
+      }
+    }
+
+    function spawnSparks(x, y, color, count) {
+      for (let i = 0; i < count; i++) {
+        const a = Math.random() * Math.PI * 2;
+        const spd = 2 + Math.random() * 8;
+        particles.push({
+          x, y,
+          vx: Math.cos(a) * spd,
+          vy: Math.sin(a) * spd,
+          color,
+          alpha: 1.0,
+          size: 2 + Math.random() * 3
+        });
+      }
+    }
+
+    function updateBars() {
+      const sp = Math.max(0, (player.shield / player.maxShield) * 100);
+      const hp = Math.max(0, (player.hp / player.maxHp) * 100);
+      document.getElementById('shield-bar').style.width = sp + '%';
+      document.getElementById('hp-bar').style.width = hp + '%';
+      document.getElementById('shield-val').textContent = `${Math.ceil(player.shield)} / ${player.maxShield}`;
+      document.getElementById('hp-val').textContent = `${Math.ceil(player.hp)} / ${player.maxHp}`;
+
+      const boss = enemies.find(e => e.type === 'boss');
+      if (boss) {
+        const bp = Math.max(0, (boss.hp / boss.maxHp) * 100);
+        document.getElementById('boss-bar').style.width = bp + '%';
+      }
+    }
+
+    /* =========================================================================
+       CANVAS RENDERING ENGINE
+       ========================================================================= */
+    function render() {
+      ctx.save();
+      if (cameraShake > 0) {
+        ctx.translate((Math.random() - 0.5) * cameraShake, (Math.random() - 0.5) * cameraShake);
+      }
+
+      // Clear Screen
+      ctx.fillStyle = '#060a12';
+      ctx.fillRect(0, 0, cw, ch);
+
+      // Draw Cyberpunk Metropolis Skyline
+      buildings.forEach(b => {
+        ctx.fillStyle = '#0b111e';
+        ctx.fillRect(b.x, b.y, b.w, b.h);
+        ctx.strokeStyle = 'rgba(0, 240, 255, 0.12)';
+        ctx.strokeRect(b.x, b.y, b.w, b.h);
+
+        // Windows
+        ctx.fillStyle = 'rgba(255, 235, 160, 0.55)';
+        for (let row = 0; row < 10; row++) {
+          for (let col = 0; col < 3; col++) {
+            if (b.windows[row * 3 + col]) {
+              ctx.fillRect(b.x + 8 + col * 12, b.y + 15 + row * 18, 5, 8);
+            }
+          }
+        }
+      });
+
+      // Horizon Fog & Floor Grid
+      const horizonY = ch * 0.45;
+      const grad = ctx.createLinearGradient(0, horizonY - 40, 0, ch);
+      grad.addColorStop(0, '#0a1020');
+      grad.addColorStop(1, '#05070c');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, horizonY, cw, ch - horizonY);
+
+      // Cyber Runway Grid
+      ctx.strokeStyle = 'rgba(0, 240, 255, 0.14)';
+      ctx.lineWidth = 1;
+      for (let x = 0; x < cw; x += 60) {
+        ctx.beginPath();
+        ctx.moveTo(x, horizonY);
+        ctx.lineTo((x - cw / 2) * 2.2 + cw / 2, ch);
+        ctx.stroke();
+      }
+      for (let y = horizonY; y < ch; y += 35) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(cw, y);
+        ctx.stroke();
+      }
+
+      // Yellow Hazard Warning Lanes
+      ctx.fillStyle = 'rgba(255, 170, 0, 0.2)';
+      ctx.fillRect(cw * 0.15, horizonY, 20, ch - horizonY);
+      ctx.fillRect(cw * 0.85, horizonY, 20, ch - horizonY);
+
+      // EMP Rings
+      particles.filter(p => p.type === 'emp-ring').forEach(p => {
+        ctx.save();
+        ctx.strokeStyle = `rgba(0, 240, 255, ${p.alpha})`;
+        ctx.lineWidth = 5;
+        ctx.shadowColor = '#00f0ff';
+        ctx.shadowBlur = 18;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+      });
+
+      // Enemy Bullets
+      enemyBullets.forEach(b => {
+        ctx.save();
+        ctx.fillStyle = '#ff6600';
+        ctx.shadowColor = '#ff5500';
+        ctx.shadowBlur = 14;
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, b.radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      });
+
+      // Player Bullets
+      bullets.forEach(b => {
+        ctx.save();
+        ctx.fillStyle = b.color;
+        ctx.shadowColor = b.color;
+        ctx.shadowBlur = 12;
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, b.radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      });
+
+      // Draw Enemies (Robots with Articulated Limbs and Eyes)
+      enemies.forEach(e => {
+        ctx.save();
+        ctx.translate(e.x, e.y);
+
+        // Stunned spark aura
+        if (e.stunned > 0) {
+          ctx.strokeStyle = '#00f0ff';
+          ctx.lineWidth = 2;
+          ctx.strokeRect(-e.radius - 8, -e.radius - 8, (e.radius + 8) * 2, (e.radius + 8) * 2);
+        }
+
+        // Heavy Mech Chassis
+        ctx.fillStyle = e.color;
+        ctx.shadowColor = e.color;
+        ctx.shadowBlur = 15;
+        ctx.beginPath();
+        ctx.roundRect(-e.radius, -e.radius, e.radius * 2, e.radius * 1.8, 6);
+        ctx.fill();
+
+        // Digitigrade Legs
+        ctx.fillStyle = '#182030';
+        ctx.fillRect(-e.radius * 0.7, e.radius * 0.8, 8, 18);
+        ctx.fillRect(e.radius * 0.7 - 8, e.radius * 0.8, 8, 18);
+
+        // Ocular Sensors / Visor (Locking gaze on Kai)
+        ctx.fillStyle = '#ff1100';
+        ctx.shadowColor = '#ff0000';
+        ctx.shadowBlur = 12;
+        if (e.type === 'scout') {
+          ctx.fillRect(-e.radius * 0.45, -e.radius * 0.35, 6, 6);
+          ctx.fillRect(e.radius * 0.45 - 6, -e.radius * 0.35, 6, 6);
+        } else if (e.type === 'boss') {
+          // Cyber-Demon Tri-Visor
+          ctx.fillRect(-18, -12, 10, 8);
+          ctx.fillRect(8, -12, 10, 8);
+          ctx.fillRect(-4, -20, 8, 8);
+        } else {
+          ctx.fillRect(-e.radius * 0.5, -e.radius * 0.3, e.radius, 7);
+        }
+
+        // Health bar
+        const hpPct = Math.max(0, e.hp / e.maxHp);
+        ctx.fillStyle = 'rgba(0,0,0,0.7)';
+        ctx.fillRect(-e.radius, -e.radius - 14, e.radius * 2, 5);
+        ctx.fillStyle = '#00ff88';
+        ctx.fillRect(-e.radius, -e.radius - 14, e.radius * 2 * hpPct, 5);
+
+        ctx.restore();
+      });
+
+      // Draw Hero Kai (Player)
+      ctx.save();
+      ctx.translate(player.x, player.y);
+
+      // Shield Bubble Shimmer
+      if (player.shield > 0) {
+        ctx.strokeStyle = 'rgba(0, 240, 255, 0.45)';
+        ctx.lineWidth = 3;
+        ctx.shadowColor = '#00f0ff';
+        ctx.shadowBlur = 14;
+        ctx.beginPath();
+        ctx.arc(0, 0, player.radius + 12, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+
+      // Torso & Cyber Jacket
+      ctx.fillStyle = '#161c28';
+      ctx.beginPath();
+      ctx.arc(0, 0, player.radius, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Glowing Back EMP Core
+      ctx.fillStyle = '#00f0ff';
+      ctx.shadowColor = '#00f0ff';
+      ctx.shadowBlur = 12;
+      ctx.beginPath();
+      ctx.arc(0, 0, 7, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Anime Spiky Hair
+      ctx.fillStyle = '#0a0d14';
+      for (let a = -0.8; a <= 0.8; a += 0.4) {
+        ctx.beginPath();
+        ctx.moveTo(Math.sin(a) * 16, -14);
+        ctx.lineTo(Math.sin(a) * 22, -26);
+        ctx.lineTo(Math.sin(a + 0.2) * 16, -14);
+        ctx.fill();
+      }
+
+      // Gun Arm Pointing at Cursor
+      ctx.save();
+      ctx.rotate(player.angle);
+      ctx.fillStyle = '#222c3d';
+      ctx.fillRect(8, -4, 26, 8);
+      ctx.fillStyle = player.weapon === 0 ? '#00f0ff' : (player.weapon === 1 ? '#e024c3' : '#00ffaa');
+      ctx.fillRect(32, -2, 6, 4);
+      ctx.restore();
+
+      ctx.restore();
+
+      // Particle Bursts
+      particles.filter(p => p.type !== 'emp-ring').forEach(p => {
+        ctx.save();
+        ctx.fillStyle = p.color;
+        ctx.globalAlpha = p.alpha;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      });
+
+      ctx.restore();
+    }
+
+    // Initialize Game
+    spawnWave(1);
+    requestAnimationFrame(gameLoop);
+  </script>
+</body>
+
+</html>
