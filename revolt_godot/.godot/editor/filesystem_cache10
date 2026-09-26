@@ -3,8 +3,8 @@
 export_presets.cfg::TextFile::-1::1790406043::0::1::::<><><>0<>0<><>::
 README.md::TextFile::-1::1790404359::0::1::::<><><>0<>0<><>::
 screenshot_open_battlefield.png::CompressedTexture2D::5780508224524103448::1790405396::1790405617::1::::<><><>0<>0<>3da0514a339582b9bd2c467b31a34a1e<>res://.godot/imported/screenshot_open_battlefield.png-77b71445eeb15e5eca17b3e2e0d4c0ef.ctex::
-screenshot_verified.png::CompressedTexture2D::4984041418049736077::1790411745::1790412379::1::::<><><>0<>0<>988cc21624c5e3f91114ab1348890014<>res://.godot/imported/screenshot_verified.png-c40281c94eda37635c6bd2b1a8055e5d.ctex::
-::res://assets/::1790412455
+screenshot_verified.png::CompressedTexture2D::4984041418049736077::1790413906::1790414513::1::::<><><>0<>0<>988cc21624c5e3f91114ab1348890014<>res://.godot/imported/screenshot_verified.png-c40281c94eda37635c6bd2b1a8055e5d.ctex::
+::res://assets/::1790412464
 armor_albedo.png::CompressedTexture2D::5032458942825974653::1790404549::1790404741::1::::<><><>0<>0<>448db4dc9e3454685fe7ffc19e3ea0d6<>res://.godot/imported/armor_albedo.png-979e96874922a2fc158a4fbd70ea62d1.ctex::
 armor_normal.png::CompressedTexture2D::1381055258527395585::1790404549::1790404741::1::::<><><>0<>0<>6af3ff7b1ad48fabc4bb14d285c97687<>res://.godot/imported/armor_normal.png-80f319401578a4fabdbdf3bede7dea01.ctex::
 blast_wall.png::CompressedTexture2D::2822781392056797887::1790406954::1790407232::1::::<><><>0<>0<>a42e1b48d631a4f33ed279f06a65f3d7<>res://.godot/imported/blast_wall.png-5b4c833b2aa3fcc2f776a4d5c00eaa30.ctex::
@@ -52,11 +52,11 @@ Main.tscn::PackedScene::205101360690870016::1790405174::0::1::::<><><>0<>0<><>::
 StoryIntro.tscn::PackedScene::91674869671537664::1790410357::0::1::::<><><>0<>0<><>::res://scripts/story_intro.gd<>res://assets/intro_1.jpg
 ::res://scripts/::1790404741
 ally_mech.gd::GDScript::4722471073767153609::1790408094::0::1::::<>CharacterBody3D<><>0<>0<><>::
-arena.gd::GDScript::5844350874384924690::1790411584::0::1::::<>Node3D<><>0<>0<><>::
+arena.gd::GDScript::5844350874384924690::1790413839::0::1::::<>Node3D<><>0<>0<><>::
 audio_manager.gd::GDScript::334264557569369234::1790412401::0::1::::<>Node<><>0<>0<><>::
-bullet.gd::GDScript::2171228531011587195::1790412434::0::1::::<>Area3D<><>0<>0<><>::
-enemy_mech.gd::GDScript::7332941514676735950::1790410911::0::1::::<>CharacterBody3D<><>0<>0<><>::
+bullet.gd::GDScript::2171228531011587195::1790413622::0::1::::<>Area3D<><>0<>0<><>::
+enemy_mech.gd::GDScript::7332941514676735950::1790413338::0::1::::<>CharacterBody3D<><>0<>0<><>::
 hud.gd::GDScript::5732065259826035815::1790407937::0::1::::<>CanvasLayer<><>0<>0<><>::
-main.gd::GDScript::7774007958930800578::1790411105::0::1::::<>Node3D<><>0<>0<><>::
-player_mech.gd::GDScript::1942842907128396339::1790411458::0::1::::<>CharacterBody3D<><>0<>0<><>::
+main.gd::GDScript::7774007958930800578::1790414500::0::1::::<>Node3D<><>0<>0<><>::
+player_mech.gd::GDScript::1942842907128396339::1790413756::0::1::::<>CharacterBody3D<><>0<>0<><>::
 story_intro.gd::GDScript::9163853720030245063::1790409986::0::1::::<>CanvasLayer<><>0<>0<><>::

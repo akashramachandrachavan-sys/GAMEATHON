@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>CYBER SURVIVOR - Gameathon Web Template</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Outfit:wght@400;600;800;900&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+  <div id="game-container">
+    <canvas id="gameCanvas" width="960" height="640"></canvas>
+
+    <!-- CRT Scanline / Vignette Overlay for retro arcade feel -->
+    <div id="crt-overlay" class="crt-overlay"></div>
+
+    <!-- UI Overlay Layer -->
+    <div id="ui-overlay">
+      <!-- HUD during gameplay -->
+      <div id="hud" class="hud-layer hidden">
+        <div class="hud-top">
+          <div class="hud-stat">
+            <span class="hud-label">SCORE</span>
+            <span id="score-display" class="hud-value">0</span>
+          </div>
+          <div class="hud-stat">
+            <span class="hud-label">WAVE</span>
+            <span id="wave-display" class="hud-value">1</span>
+          </div>
+          <div class="hud-stat">
+            <span class="hud-label">HIGH SCORE</span>
+            <span id="high-score-display" class="hud-value">0</span>
+          </div>
+        </div>
+        <div class="hud-bottom">
+          <div class="hud-stat health-container">
+            <span class="hud-label">HP</span>
+            <div class="health-bar-bg">
+              <div id="health-bar-fill" class="health-bar-fill" style="width: 100%;"></div>
+            </div>
+            <span id="health-text" class="health-text">100 / 100</span>
+          </div>
+          <div class="hud-stat">
+            <span class="hud-label">WEAPON</span>
+            <span id="weapon-display" class="hud-value weapon-tag">BLASTER</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Start / Menu Screen -->
+      <div id="menu-screen" class="screen-modal">
+        <div class="screen-card">
+          <div class="glitch-badge">IEEE GAMEATHON READY</div>
+          <h1 class="game-title">CYBER<span class="highlight">SURVIVOR</span></h1>
+          <p class="game-subtitle">SURVIVE THE SWARM • UPGRADE YOUR ARSENAL</p>
+
+          <div class="controls-guide">
+            <div class="control-key"><span>WASD</span> / <span>ARROWS</span> Move</div>
+            <div class="control-key"><span>MOUSE</span> Aim & Shoot (Hold)</div>
+            <div class="control-key"><span>SPACE</span> Dash / Boost</div>
+            <div class="control-key"><span>P</span> Pause</div>
+          </div>
+
+          <div class="menu-actions">
+            <button id="btn-start" class="arcade-btn primary-btn">START GAME</button>
+            <button id="btn-toggle-sound" class="arcade-btn secondary-btn">SOUND: ON</button>
+          </div>
+
+          <div class="hackathon-tip">
+            ⚡ <strong>Gameathon Tip:</strong> Press <strong>F1</strong> in-game for God Mode / Debug Controls to demo to
+            judges!
+          </div>
+        </div>
+      </div>
+
+      <!-- Pause Screen -->
+      <div id="pause-screen" class="screen-modal hidden">
+        <div class="screen-card mini">
+          <h2 class="modal-title">GAME PAUSED</h2>
+          <button id="btn-resume" class="arcade-btn primary-btn">RESUME</button>
+          <button id="btn-restart-pause" class="arcade-btn secondary-btn">RESTART</button>
+        </div>
+      </div>
+
+      <!-- Game Over Screen -->
+      <div id="gameover-screen" class="screen-modal hidden">
+        <div class="screen-card">
+          <div class="gameover-badge">MISSION FAILED</div>
+          <h2 class="gameover-title">GAME OVER</h2>
+          <div class="gameover-stats">
+            <div class="stat-box">
+              <div class="stat-title">FINAL SCORE</div>
+              <div id="final-score" class="stat-number">0</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-title">WAVES SURVIVED</div>
+              <div id="final-wave" class="stat-number">0</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-title">ENEMIES DESTROYED</div>
+              <div id="final-kills" class="stat-number">0</div>
+            </div>
+          </div>
+          <div class="menu-actions">
+            <button id="btn-retry" class="arcade-btn primary-btn">PLAY AGAIN [SPACE]</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Level Up / Upgrade Modal -->
+      <div id="upgrade-screen" class="screen-modal hidden">
+        <div class="screen-card">
+          <div class="glitch-badge">SYSTEM UPGRADE</div>
+          <h2 class="modal-title">CHOOSE AN AUGMENT</h2>
+          <p class="modal-desc">Enhance your combat systems to endure higher tier waves</p>
+          <div id="upgrade-cards-container" class="upgrade-grid">
+            <!-- Dynamically populated -->
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="audio.js"></script>
+  <script src="game.js"></script>
+</body>
+
+</html>
