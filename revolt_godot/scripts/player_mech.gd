@@ -77,7 +77,7 @@ var step_timer: float = 0.0
 var sway_offset: Vector2 = Vector2.ZERO
 
 # Camera
-var camera_pitch: float = -10.0
+var camera_pitch: float = 2.0
 var camera_yaw: float = 0.0
 var camera_shake: float = 0.0
 var target_fov: float = 74.0
@@ -133,7 +133,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
 		camera_yaw -= event.relative.x * MOUSE_SENSITIVITY
 		camera_pitch -= event.relative.y * MOUSE_SENSITIVITY * 40.0
-		camera_pitch = clamp(camera_pitch, -55.0, 30.0)
+		camera_pitch = clamp(camera_pitch, -45.0, 55.0)
 		
 		# Procedural weapon sway
 		sway_offset.x = clamp(sway_offset.x - event.relative.x * 0.0015, -0.08, 0.08)
@@ -624,6 +624,7 @@ func _setup_camera() -> void:
 	camera = Camera3D.new()
 	camera.current = true
 	camera.fov = 74.0
+	camera.far = 600.0
 	spring_arm.add_child(camera)
 	
 	# Over Kai's right shoulder for classic OTS shooter perspective

@@ -120,7 +120,7 @@ func _start_gameplay() -> void:
 	player.set_script(player_script)
 	player.add_to_group("player")
 	add_child(player)
-	player.global_position = Vector3(0, 0.5, 22.0)
+	player.global_position = Vector3(0, 0.5, 36.0)
 	
 	# Connect Player Signals to HUD
 	player.health_changed.connect(_on_player_health_changed)
@@ -189,12 +189,13 @@ func _spawn_wave_enemies(scouts: int, grunts: int, bruisers: int, has_boss: bool
 	total_wave_enemies = enemies_remaining
 	var enemy_script = load("res://scripts/enemy_mech.gd")
 	
-	# Spawn points strategically distanced across the open arena
+	# Spawn points strategically distanced across the expanded 150m arena
 	var spawn_points = [
-		Vector3(-14, 0.5, -24),
-		Vector3(14, 0.5, -24),
-		Vector3(-24, 0.5, -12),
-		Vector3(24, 0.5, -12)
+		Vector3(-24, 0.5, -42),
+		Vector3(24, 0.5, -42),
+		Vector3(-42, 0.5, -20),
+		Vector3(42, 0.5, -20),
+		Vector3(0, 0.5, -50)
 	]
 	
 	var sp_idx = 0
@@ -227,7 +228,7 @@ func _spawn_wave_enemies(scouts: int, grunts: int, bruisers: int, has_boss: bool
 		boss.set_script(enemy_script)
 		boss.bot_type = "boss"
 		add_child(boss)
-		boss.global_position = Vector3(0, 0.5, -28)
+		boss.global_position = Vector3(0, 0.5, -48)
 
 func on_enemy_destroyed(bot_type: String) -> void:
 	enemies_remaining = max(0, enemies_remaining - 1)
