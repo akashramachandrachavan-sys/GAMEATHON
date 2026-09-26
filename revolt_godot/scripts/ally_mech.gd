@@ -30,9 +30,33 @@ var right_gatling_barrels: Node3D
 var visor_mat: StandardMaterial3D
 var health_label: Label3D
 
+var ally_type: String = "grunt"
+
 func _ready() -> void:
 	add_to_group("allies")
-	scale = Vector3(3.4, 3.4, 3.4) # Matches towering enemy titan scale!
+	match ally_type:
+		"scout":
+			scale = Vector3(1.15, 1.15, 1.15)
+			speed = 7.2
+			max_health = 130.0
+			damage_per_shot = 9.0
+			max_burst = 4
+		"grunt":
+			scale = Vector3(2.3, 2.3, 2.3)
+			speed = 5.0
+			max_health = 320.0
+			damage_per_shot = 15.0
+			max_burst = 7
+		"bruiser":
+			scale = Vector3(3.8, 3.8, 3.8)
+			speed = 3.8
+			max_health = 600.0
+			damage_per_shot = 24.0
+			max_burst = 9
+		_:
+			scale = Vector3(2.3, 2.3, 2.3)
+			max_health = 320.0
+	health = max_health
 	_build_giant_ally_mesh()
 	_setup_collision()
 	

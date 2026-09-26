@@ -1,12 +1,14 @@
 extends Node3D
 
 # Main Game Controller for REVOLT 2150: SQUAD ALLIANCE
+# Linear Wave Progression: Small Scouts -> Medium Enforcers -> Heavy Titans -> Flagship Boss OMEGA-ZERO
 
 var current_wave: int = 1
 var score: int = 0
 var max_allies: int = 3
 var active_allies: int = 0
 var enemies_remaining: int = 0
+var total_wave_enemies: int = 0
 var game_active: bool = false
 
 # References
@@ -17,17 +19,24 @@ var world_env: WorldEnvironment
 func _ready() -> void:
 	_setup_environment()
 	_setup_arena()
-	if OS.get_cmdline_user_args().has("--fast-start"):
+	var all_args = OS.get_cmdline_args() + OS.get_cmdline_user_args()
+	if all_args.has("--fast-start"):
 		_start_gameplay()
 	else:
 		_show_story_intro()
 		
-	if OS.get_cmdline_user_args().has("--capture-screenshot"):
+	if all_args.has("--capture-screenshot"):
 		get_tree().create_timer(1.2).timeout.connect(func():
 			var img = get_viewport().get_texture().get_image()
 			img.save_png("res://screenshot_verified.png")
 			get_tree().quit()
 		)
+
+func _unhandled_input(event: InputEvent) -> void:
+	if not game_active:
+		if event is InputEventKey and event.pressed:
+			if event.keycode in [KEY_R, KEY_ENTER, KEY_SPACE]:
+				get_tree().reload_current_scene()
 
 func _setup_environment() -> void:
 	world_env = WorldEnvironment.new()
@@ -74,7 +83,7 @@ func _setup_environment() -> void:
 	world_env.environment = env
 	add_child(world_env)
 	
-	# Cinematic Key Light with Crisp Shadows
+	# Key Light with Shadows
 	var sun = DirectionalLight3D.new()
 	sun.light_color = Color(0.88, 0.94, 1.0)
 	sun.light_energy = 1.6
@@ -102,6 +111,7 @@ func _start_gameplay() -> void:
 	# Setup HUD
 	var hud_scene = load("res://scenes/HUD.tscn")
 	hud = hud_scene.instantiate()
+	hud.add_to_group("hud")
 	add_child(hud)
 	
 	# Spawn Teen Hero Kai in the open testing plaza
@@ -113,7 +123,7 @@ func _start_gameplay() -> void:
 	player.global_position = Vector3(0, 0.5, 22.0)
 	
 	# Connect Player Signals to HUD
-	player.health_changed.connect(hud.update_health)
+	player.health_changed.connect(_on_player_health_changed)
 	player.shield_changed.connect(hud.update_shield)
 	player.stim_changed.connect(hud.update_stims)
 	player.weapon_changed.connect(hud.update_weapon)
@@ -125,55 +135,83 @@ func _start_gameplay() -> void:
 	hud.update_allies(active_allies, max_allies)
 	hud.update_score(score)
 	
-	# Start Wave 1
+	# Start Wave 1: Small Scout Droids
 	_start_wave(1)
+
+func _on_player_health_changed(current: float, max_hp: float) -> void:
+	if is_instance_valid(hud):
+		hud.update_health(current, max_hp)
+	if current <= 0.0 and game_active:
+		game_over(false)
 
 func _start_wave(wave_num: int) -> void:
 	current_wave = wave_num
 	var subtitle = ""
 	var comms_msg = ""
+	var objective = ""
 	
 	match wave_num:
 		1:
-			subtitle = "COLOSSAL GOLIATH ENFORCER // 1 TITAN DETECTED"
-			comms_msg = "Kai! A massive 6-meter Goliath Enforcer has broken through! Use cargo containers for cover, stun its reactor with EMP [Q], and reprogram it [E]!"
-			hud.set_wave(1, "SECTOR ALERT // WAVE 1", subtitle)
+			subtitle = "RECON SCOUT INFILTRATION // 4 LIGHT UNITS DETECTED"
+			objective = "OBJECTIVE: ELIMINATE RECON SCOUTS [ 4 REMAINING ]"
+			comms_msg = "Kai! Sterling Labs recon scouts are infiltrating the testing grounds! They're fast and agile—switch between your [1] Pulse Rifle and [2] Shotgun to shred their plating!"
+			hud.set_wave(1, "SECTOR ALERT // WAVE 1", subtitle, objective)
 			hud.show_comms("MAYA // TACTICAL OVERRIDE", comms_msg, 7.5)
-			# Wave 1: Exactly 1 Giant Enforcer Titan (intense 1v1 battle)
-			_spawn_wave_enemies(1, 0, false)
+			# Wave 1: 4 Small Scout Droids (Linear starting wave)
+			_spawn_wave_enemies(4, 0, 0, false)
 		2:
-			subtitle = "TWIN HEAVY BRUISER TITANS // 2 HOSTILES INBOUND"
-			comms_msg = "Two Heavy Siege Titans are advancing across the testing grounds! Reprogram one to turn its heavy Gatling cannons against the other!"
-			hud.set_wave(2, "SECTOR ALERT // WAVE 2", subtitle)
-			hud.show_comms("JAX // HEAVY MUNITIONS", comms_msg, 7.5)
-			# Wave 2: Exactly 2 Heavy Titans (2 at a time)
-			_spawn_wave_enemies(0, 2, false)
+			subtitle = "MEDIUM ASSAULT PATROL // 2 ENFORCERS INBOUND"
+			objective = "OBJECTIVE: PURGE OR REPROGRAM ENFORCERS [ 2 REMAINING ]"
+			comms_msg = "Two 4-meter Combat Enforcers are entering the plaza! They pack heavy Gatling guns—use your [Q] EMP Shockwave to stun one, then hold [E] to reprogram it!"
+			hud.set_wave(2, "SECTOR ALERT // WAVE 2", subtitle, objective)
+			hud.show_comms("MAYA // TACTICAL OVERRIDE", comms_msg, 7.5)
+			# Wave 2: 2 Medium Enforcers
+			_spawn_wave_enemies(0, 2, 0, false)
 		3:
-			subtitle = "TITAN OMEGA-ZERO // 10-METER FLAGSHIP COLOSSUS"
-			comms_msg = "CRITICAL ALERT! Flagship prototype OMEGA-ZERO has entered the arena! Stand your ground, dodge its missile barrage, and purge it!"
-			hud.set_wave(3, "CRITICAL ALERT // WAVE 3", subtitle)
-			hud.show_comms("MAYA // EMERGENCY", comms_msg, 8.5)
-			# Wave 3: Exactly 1 Apex Titan Boss
-			_spawn_wave_enemies(0, 0, true)
+			subtitle = "HEAVY SIEGE BATTALION // 2 HEAVY TITANS INBOUND"
+			objective = "OBJECTIVE: DESTROY OR REPROGRAM SIEGE TITANS [ 2 REMAINING ]"
+			comms_msg = "Heavy 7-meter Siege Titans deployed with reinforced armor! Pierce their hull with the [3] Ion Railgun and pop Overclock [F] for bullet-time evasion!"
+			hud.set_wave(3, "SECTOR ALERT // WAVE 3", subtitle, objective)
+			hud.show_comms("JAX // HEAVY MUNITIONS", comms_msg, 7.5)
+			# Wave 3: 2 Heavy Siege Titans
+			_spawn_wave_enemies(0, 0, 2, false)
+		4:
+			subtitle = "CRITICAL THREAT // TITAN OMEGA-ZERO (11-METER APEX COLOSSUS)"
+			objective = "OBJECTIVE: TERMINATE APEX TITAN OMEGA-ZERO"
+			comms_msg = "CRITICAL ALERT! The Flagship Colossus OMEGA-ZERO has entered the arena! Stand your ground, unleash all firepower, and save the city!"
+			hud.set_wave(4, "CRITICAL ALERT // WAVE 4", subtitle, objective)
+			hud.show_comms("MAYA & JAX // EMERGENCY", comms_msg, 8.5)
+			# Wave 4: Colossal Flagship Apex Boss
+			_spawn_wave_enemies(0, 0, 0, true)
 
-func _spawn_wave_enemies(grunts: int, bruisers: int, has_boss: bool) -> void:
-	enemies_remaining = grunts + bruisers + (1 if has_boss else 0)
+func _spawn_wave_enemies(scouts: int, grunts: int, bruisers: int, has_boss: bool) -> void:
+	enemies_remaining = scouts + grunts + bruisers + (1 if has_boss else 0)
+	total_wave_enemies = enemies_remaining
 	var enemy_script = load("res://scripts/enemy_mech.gd")
 	
 	# Spawn points strategically distanced across the open arena
 	var spawn_points = [
-		Vector3(0, 0.5, -28),
-		Vector3(-22, 0.5, -20),
-		Vector3(22, 0.5, -20)
+		Vector3(-14, 0.5, -24),
+		Vector3(14, 0.5, -24),
+		Vector3(-24, 0.5, -12),
+		Vector3(24, 0.5, -12)
 	]
 	
 	var sp_idx = 0
+	for i in range(scouts):
+		var bot = CharacterBody3D.new()
+		bot.set_script(enemy_script)
+		bot.bot_type = "scout"
+		add_child(bot)
+		bot.global_position = spawn_points[sp_idx % spawn_points.size()]
+		sp_idx += 1
+		
 	for i in range(grunts):
 		var bot = CharacterBody3D.new()
 		bot.set_script(enemy_script)
 		bot.bot_type = "grunt"
 		add_child(bot)
-		bot.global_position = spawn_points[sp_idx]
+		bot.global_position = spawn_points[sp_idx % spawn_points.size()]
 		sp_idx += 1
 		
 	for i in range(bruisers):
@@ -181,7 +219,7 @@ func _spawn_wave_enemies(grunts: int, bruisers: int, has_boss: bool) -> void:
 		bot.set_script(enemy_script)
 		bot.bot_type = "bruiser"
 		add_child(bot)
-		bot.global_position = spawn_points[sp_idx]
+		bot.global_position = spawn_points[sp_idx % spawn_points.size()]
 		sp_idx += 1
 		
 	if has_boss:
@@ -189,25 +227,28 @@ func _spawn_wave_enemies(grunts: int, bruisers: int, has_boss: bool) -> void:
 		boss.set_script(enemy_script)
 		boss.bot_type = "boss"
 		add_child(boss)
-		boss.global_position = Vector3(0, 0.5, -26)
+		boss.global_position = Vector3(0, 0.5, -28)
 
 func on_enemy_destroyed(bot_type: String) -> void:
 	enemies_remaining = max(0, enemies_remaining - 1)
 	match bot_type:
-		"grunt": score += 250
-		"bruiser": score += 500
-		"boss": score += 2500
+		"scout": score += 150
+		"grunt": score += 350
+		"bruiser": score += 650
+		"boss": score += 3000
 		
 	hud.update_score(score)
+	_update_hud_objective()
 	_check_wave_cleared()
 
 func on_bot_reprogrammed() -> void:
 	enemies_remaining = max(0, enemies_remaining - 1)
 	active_allies = min(max_allies, active_allies + 1)
-	score += 350
+	score += 450
 	hud.update_score(score)
 	hud.update_allies(active_allies, max_allies)
 	hud.show_comms("MAYA // TACTICAL OVERRIDE", "Unit reprogrammed! Combat alliance updated.", 4.0)
+	_update_hud_objective()
 	_check_wave_cleared()
 
 func on_ally_destroyed() -> void:
@@ -215,12 +256,26 @@ func on_ally_destroyed() -> void:
 	hud.update_allies(active_allies, max_allies)
 	hud.show_comms("JAX // MUNITIONS", "Allied unit lost! Reprogram another if you need backup.", 4.0)
 
+func _update_hud_objective() -> void:
+	if not is_instance_valid(hud): return
+	if current_wave == 4:
+		hud.update_objective("OBJECTIVE: TERMINATE APEX TITAN OMEGA-ZERO")
+	else:
+		hud.update_objective("OBJECTIVE: ELIMINATE HOSTILES [ %d REMAINING ]" % enemies_remaining)
+
 func _check_wave_cleared() -> void:
 	if enemies_remaining <= 0 and game_active:
-		if current_wave < 3:
-			hud.show_comms("MAYA // TACTICAL OVERRIDE", "Sector secured! Next wave deploying immediately.", 5.0)
+		if current_wave < 4:
+			# Reward Kai with full shield and extra stim pack
+			if is_instance_valid(player) and player.has_method("reward_wave_completion"):
+				player.reward_wave_completion()
+				
+			hud.show_wave_cleared(current_wave, "+500 CREDITS | REPAIRING NANO-VEST (+100 SHIELD, +1 STIM)")
+			hud.show_comms("MAYA // TACTICAL OVERRIDE", "Sector secured! Next threat deploying in 3 seconds.", 4.5)
+			
 			get_tree().create_timer(3.5).timeout.connect(func():
-				_start_wave(current_wave + 1)
+				if game_active:
+					_start_wave(current_wave + 1)
 			)
 		else:
 			game_over(true)
@@ -233,44 +288,48 @@ func game_over(victory: bool) -> void:
 	var bg = Panel.new()
 	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
 	var style = StyleBoxFlat.new()
-	style.bg_color = Color(0.02, 0.04, 0.08, 0.92)
+	style.bg_color = Color(0.02, 0.04, 0.08, 0.94)
 	bg.add_theme_stylebox_override("panel", style)
 	end_layer.add_child(bg)
 	
 	var vbox = VBoxContainer.new()
 	vbox.set_anchors_preset(Control.PRESET_CENTER)
-	vbox.offset_left = -250
-	vbox.offset_right = 250
-	vbox.offset_top = -140
-	vbox.offset_bottom = 140
-	vbox.add_theme_constant_override("separation", 18)
+	vbox.offset_left = -300
+	vbox.offset_right = 300
+	vbox.offset_top = -160
+	vbox.offset_bottom = 160
+	vbox.add_theme_constant_override("separation", 16)
 	bg.add_child(vbox)
 	
 	var title = Label.new()
 	title.text = "VICTORY // OMEGA-ZERO PURGED!" if victory else "MISSION FAILED // KAI OVERWHELMED"
-	title.add_theme_font_size_override("font_size", 26)
-	title.add_theme_color_override("font_color", Color(0, 1, 0.7) if victory else Color(1, 0.2, 0.2))
+	title.add_theme_font_size_override("font_size", 28)
+	title.add_theme_color_override("font_color", Color(0, 1, 0.75) if victory else Color(1, 0.25, 0.25))
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vbox.add_child(title)
 	
 	var desc = Label.new()
 	if victory:
-		desc.text = "Kai, Maya and Jax successfully stopped the robot rebellion!\nThe city is saved thanks to your Squad Alliance."
+		desc.text = "Kai, Maya, and Jax saved Sterling City!\nThe rogue machine fleet has been completely deactivated.\nPROVING GROUNDS LIBERATED — ALL 4 WAVES CLEARED."
 	else:
-		desc.text = "Omega-Zero's rogue army conquered the sector.\nRepair your Vanguard Walker and fight back!"
+		desc.text = "Omega-Zero's rogue armada overran the testing grounds.\nRe-calibrate your weapon systems and fight again!"
 	desc.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	desc.add_theme_font_size_override("font_size", 14)
+	desc.add_theme_color_override("font_color", Color(0.8, 0.9, 0.95))
 	vbox.add_child(desc)
 	
 	var score_lbl = Label.new()
-	score_lbl.text = "FINAL SCORE: %d" % score
+	score_lbl.text = "FINAL SCORE: %05d   //   WAVES SURVIVED: %d / 4" % [score, current_wave if victory else (current_wave - 1)]
 	score_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	score_lbl.add_theme_font_size_override("font_size", 16)
+	score_lbl.add_theme_color_override("font_color", Color(0.3, 0.95, 1.0))
 	vbox.add_child(score_lbl)
 	
 	var restart_btn = Button.new()
-	restart_btn.text = "PLAY AGAIN [ENTER]"
-	restart_btn.custom_minimum_size = Vector2(220, 50)
+	restart_btn.text = "REPLAY MISSION [R / ENTER]"
+	restart_btn.custom_minimum_size = Vector2(260, 52)
 	var btn_style = StyleBoxFlat.new()
-	btn_style.bg_color = Color(0, 0.7, 0.9)
+	btn_style.bg_color = Color(0, 0.75, 0.9)
 	btn_style.corner_radius_top_left = 6
 	btn_style.corner_radius_top_right = 6
 	btn_style.corner_radius_bottom_right = 6

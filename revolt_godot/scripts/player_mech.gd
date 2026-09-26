@@ -7,7 +7,7 @@ extends CharacterBody3D
 signal health_changed(current_hp, max_hp)
 signal shield_changed(current_shield, max_shield)
 signal stim_changed(count)
-signal weapon_changed(weapon_name)
+signal weapon_changed(weapon_idx, weapon_name)
 signal heat_updated(current_heat, max_heat)
 signal emp_cooldown_updated(current, max_time)
 signal overclock_updated(is_ready, remaining_cd)
@@ -120,11 +120,10 @@ func _ready() -> void:
 	health_changed.emit(health, max_health)
 	shield_changed.emit(shield, max_shield)
 	stim_changed.emit(stim_packs)
-	weapon_changed.emit(weapon_names[current_weapon])
 	emp_cooldown_updated.emit(0.0, emp_max_cooldown)
 	overclock_updated.emit(true, 0.0)
 	heat_updated.emit(current_heat, max_heat)
-	_switch_weapon(0)
+	_switch_weapon(0, true)
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.pressed:
@@ -345,14 +344,25 @@ func _physics_process(delta: float) -> void:
 	# Camera update
 	_update_camera(delta)
 
-func _switch_weapon(new_idx: int) -> void:
+func _switch_weapon(new_idx: int, force: bool = false) -> void:
+	if current_weapon == new_idx and not force:
+		return
 	current_weapon = new_idx
-	AudioManager.play_weapon_switch()
-	weapon_changed.emit(weapon_names[current_weapon])
+	if not force:
+		AudioManager.play_weapon_switch()
+	weapon_changed.emit(current_weapon, weapon_names[current_weapon])
 	
 	if gun_mesh_rifle: gun_mesh_rifle.visible = (current_weapon == 0)
 	if gun_mesh_shotgun: gun_mesh_shotgun.visible = (current_weapon == 1)
 	if gun_mesh_railgun: gun_mesh_railgun.visible = (current_weapon == 2)
+
+func reward_wave_completion() -> void:
+	shield = max_shield
+	health = min(max_health, health + 100.0)
+	stim_packs = min(4, stim_packs + 1)
+	health_changed.emit(health, max_health)
+	shield_changed.emit(shield, max_shield)
+	stim_changed.emit(stim_packs)
 
 func _use_stim_pack() -> void:
 	stim_packs -= 1
@@ -539,11 +549,14 @@ func _process_reprogram(delta: float) -> void:
 func _convert_enemy_to_ally(enemy: Node3D) -> void:
 	AudioManager.play_reprogram()
 	var spawn_pos = enemy.global_position
+	var b_type = enemy.get("bot_type")
 	enemy.queue_free()
 	
 	var ally_scene = load("res://scripts/ally_mech.gd")
 	var ally = CharacterBody3D.new()
 	ally.set_script(ally_scene)
+	if b_type != null:
+		ally.set("ally_type", b_type)
 	get_parent().add_child(ally)
 	ally.global_position = spawn_pos
 	

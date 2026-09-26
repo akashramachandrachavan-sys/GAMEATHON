@@ -16,6 +16,30 @@ corner_radius_top_right = 2
 corner_radius_bottom_right = 2
 corner_radius_bottom_left = 2
 
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_slot_active"]
+bg_color = Color(0.03, 0.18, 0.24, 0.90)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.0, 1.0, 0.9, 1.0)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_slot_inactive"]
+bg_color = Color(0.02, 0.05, 0.08, 0.75)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.12, 0.35, 0.40, 0.40)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_bar_bg"]
 bg_color = Color(0.04, 0.08, 0.1, 0.8)
 
@@ -24,6 +48,21 @@ bg_color = Color(0, 1, 0.55, 0.9)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_shield_fg"]
 bg_color = Color(0, 0.8, 1.0, 0.9)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_boss_fg"]
+bg_color = Color(1.0, 0.2, 0.2, 0.95)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_banner_panel"]
+bg_color = Color(0.02, 0.06, 0.12, 0.94)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.0, 1.0, 0.65, 0.85)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
 
 [node name="HUD" type="CanvasLayer"]
 script = ExtResource("1_hud")
@@ -53,19 +92,20 @@ mouse_filter = 2
 
 [node name="HackLabel" type="Label" parent="CenterReticle"]
 layout_mode = 0
-offset_left = -140.0
+offset_left = -160.0
 offset_top = 50.0
-offset_right = 140.0
+offset_right = 160.0
 offset_bottom = 75.0
 theme_override_colors/font_color = Color(0, 1, 0.6, 1)
-text = "OVERRIDING AI SUBROUTINES..."
+theme_override_font_sizes/font_size = 13
+text = "[ HOLD E ] OVERRIDING ROBOT CORE..."
 horizontal_alignment = 1
 
 [node name="HackBar" type="ProgressBar" parent="CenterReticle"]
 layout_mode = 0
-offset_left = -100.0
+offset_left = -110.0
 offset_top = 78.0
-offset_right = 100.0
+offset_right = 110.0
 offset_bottom = 88.0
 theme_override_styles/background = SubResource("StyleBoxFlat_bar_bg")
 theme_override_styles/fill = SubResource("StyleBoxFlat_bar_fg")
@@ -75,12 +115,12 @@ show_percentage = false
 anchors_preset = 2
 anchor_top = 1.0
 anchor_bottom = 1.0
-offset_top = -170.0
-offset_right = 380.0
+offset_top = -152.0
+offset_right = 315.0
 grow_vertical = 0
 mouse_filter = 2
-theme_override_constants/margin_left = 28
-theme_override_constants/margin_bottom = 24
+theme_override_constants/margin_left = 18
+theme_override_constants/margin_bottom = 14
 
 [node name="Panel" type="PanelContainer" parent="BottomLeft"]
 layout_mode = 2
@@ -90,10 +130,10 @@ theme_override_styles/panel = SubResource("StyleBoxFlat_hud_panel")
 [node name="HBox" type="HBoxContainer" parent="BottomLeft/Panel"]
 layout_mode = 2
 mouse_filter = 2
-theme_override_constants/separation = 12
+theme_override_constants/separation = 10
 
 [node name="Schematic" type="TextureRect" parent="BottomLeft/Panel/HBox"]
-custom_minimum_size = Vector2(85, 85)
+custom_minimum_size = Vector2(74, 74)
 layout_mode = 2
 mouse_filter = 2
 texture = ExtResource("3_schematic")
@@ -115,18 +155,18 @@ layout_mode = 2
 size_flags_horizontal = 3
 mouse_filter = 2
 theme_override_colors/font_color = Color(0, 0.85, 1, 1)
-theme_override_font_sizes/font_size = 12
-text = "KAI // TACTICAL SHIELD"
+theme_override_font_sizes/font_size = 11
+text = "KAI // SHIELD"
 
 [node name="ShieldVal" type="Label" parent="BottomLeft/Panel/HBox/VBox/ShieldHBox"]
 layout_mode = 2
 mouse_filter = 2
 theme_override_colors/font_color = Color(0, 0.85, 1, 1)
-theme_override_font_sizes/font_size = 12
+theme_override_font_sizes/font_size = 11
 text = "200 / 200"
 
 [node name="ShieldBar" type="ProgressBar" parent="BottomLeft/Panel/HBox/VBox"]
-custom_minimum_size = Vector2(0, 10)
+custom_minimum_size = Vector2(0, 8)
 layout_mode = 2
 mouse_filter = 2
 theme_override_styles/background = SubResource("StyleBoxFlat_bar_bg")
@@ -143,18 +183,18 @@ layout_mode = 2
 size_flags_horizontal = 3
 mouse_filter = 2
 theme_override_colors/font_color = Color(0, 1, 0.55, 1)
-theme_override_font_sizes/font_size = 12
-text = "VITALITY // HEALTH"
+theme_override_font_sizes/font_size = 11
+text = "VITALITY // HP"
 
 [node name="HealthVal" type="Label" parent="BottomLeft/Panel/HBox/VBox/HeaderHBox"]
 layout_mode = 2
 mouse_filter = 2
 theme_override_colors/font_color = Color(0, 1, 0.55, 1)
-theme_override_font_sizes/font_size = 12
+theme_override_font_sizes/font_size = 11
 text = "300 / 300"
 
 [node name="HealthBar" type="ProgressBar" parent="BottomLeft/Panel/HBox/VBox"]
-custom_minimum_size = Vector2(0, 10)
+custom_minimum_size = Vector2(0, 8)
 layout_mode = 2
 mouse_filter = 2
 theme_override_styles/background = SubResource("StyleBoxFlat_bar_bg")
@@ -165,9 +205,201 @@ show_percentage = false
 [node name="SubInfo" type="Label" parent="BottomLeft/Panel/HBox/VBox"]
 layout_mode = 2
 mouse_filter = 2
-theme_override_colors/font_color = Color(0.4, 0.8, 0.6, 1)
+theme_override_colors/font_color = Color(0.4, 0.85, 0.65, 1)
+theme_override_font_sizes/font_size = 10
+text = "SUIT: CYBER-VEST // STIMS [C]: 2"
+
+[node name="BottomCenter" type="MarginContainer" parent="."]
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -245.0
+offset_top = -118.0
+offset_right = 245.0
+grow_horizontal = 2
+grow_vertical = 0
+mouse_filter = 2
+theme_override_constants/margin_bottom = 10
+
+[node name="VBox" type="VBoxContainer" parent="BottomCenter"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 4
+
+[node name="ControlsBanner" type="Label" parent="BottomCenter/VBox"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.35, 0.95, 0.85, 0.95)
+theme_override_font_sizes/font_size = 10
+text = "[1] [2] [3] OR [WHEEL]: SWITCH WEAPON  |  [LMB]: FIRE  |  [Q]: EMP  |  [F]: TIME  |  [C]: STIM"
+horizontal_alignment = 1
+
+[node name="SlotsHBox" type="HBoxContainer" parent="BottomCenter/VBox"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 8
+alignment = 1
+
+[node name="Slot0" type="PanelContainer" parent="BottomCenter/VBox/SlotsHBox"]
+custom_minimum_size = Vector2(150, 64)
+layout_mode = 2
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_slot_active")
+
+[node name="Margin" type="MarginContainer" parent="BottomCenter/VBox/SlotsHBox/Slot0"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/margin_left = 8
+theme_override_constants/margin_top = 4
+theme_override_constants/margin_right = 8
+theme_override_constants/margin_bottom = 4
+
+[node name="VBox" type="VBoxContainer" parent="BottomCenter/VBox/SlotsHBox/Slot0/Margin"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 1
+
+[node name="HeaderHBox" type="HBoxContainer" parent="BottomCenter/VBox/SlotsHBox/Slot0/Margin/VBox"]
+layout_mode = 2
+mouse_filter = 2
+
+[node name="KeyTag" type="Label" parent="BottomCenter/VBox/SlotsHBox/Slot0/Margin/VBox/HeaderHBox"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_colors/font_color = Color(0, 1, 0.9, 1)
 theme_override_font_sizes/font_size = 11
-text = "SUIT: CYBER-VEST // STIMS [C]: 2 READY"
+text = "[ KEY 1 ]"
+
+[node name="Status" type="Label" parent="BottomCenter/VBox/SlotsHBox/Slot0/Margin/VBox/HeaderHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.2, 1, 0.6, 1)
+theme_override_font_sizes/font_size = 9
+text = "ACTIVE"
+horizontal_alignment = 2
+
+[node name="WeaponTitle" type="Label" parent="BottomCenter/VBox/SlotsHBox/Slot0/Margin/VBox"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 12
+text = "PULSE RIFLE"
+
+[node name="WeaponSub" type="Label" parent="BottomCenter/VBox/SlotsHBox/Slot0/Margin/VBox"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.4, 0.85, 0.85, 1)
+theme_override_font_sizes/font_size = 9
+text = "Vanguard Rapid"
+
+[node name="Slot1" type="PanelContainer" parent="BottomCenter/VBox/SlotsHBox"]
+custom_minimum_size = Vector2(150, 64)
+layout_mode = 2
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_slot_inactive")
+
+[node name="Margin" type="MarginContainer" parent="BottomCenter/VBox/SlotsHBox/Slot1"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/margin_left = 8
+theme_override_constants/margin_top = 4
+theme_override_constants/margin_right = 8
+theme_override_constants/margin_bottom = 4
+
+[node name="VBox" type="VBoxContainer" parent="BottomCenter/VBox/SlotsHBox/Slot1/Margin"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 1
+
+[node name="HeaderHBox" type="HBoxContainer" parent="BottomCenter/VBox/SlotsHBox/Slot1/Margin/VBox"]
+layout_mode = 2
+mouse_filter = 2
+
+[node name="KeyTag" type="Label" parent="BottomCenter/VBox/SlotsHBox/Slot1/Margin/VBox/HeaderHBox"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.6, 0.8, 0.8, 1)
+theme_override_font_sizes/font_size = 11
+text = "[ KEY 2 ]"
+
+[node name="Status" type="Label" parent="BottomCenter/VBox/SlotsHBox/Slot1/Margin/VBox/HeaderHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.4, 0.6, 0.6, 1)
+theme_override_font_sizes/font_size = 9
+text = "READY"
+horizontal_alignment = 2
+
+[node name="WeaponTitle" type="Label" parent="BottomCenter/VBox/SlotsHBox/Slot1/Margin/VBox"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.75, 0.85, 0.85, 1)
+theme_override_font_sizes/font_size = 12
+text = "SHOTGUN"
+
+[node name="WeaponSub" type="Label" parent="BottomCenter/VBox/SlotsHBox/Slot1/Margin/VBox"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.4, 0.6, 0.6, 1)
+theme_override_font_sizes/font_size = 9
+text = "Scatter Burst"
+
+[node name="Slot2" type="PanelContainer" parent="BottomCenter/VBox/SlotsHBox"]
+custom_minimum_size = Vector2(150, 64)
+layout_mode = 2
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_slot_inactive")
+
+[node name="Margin" type="MarginContainer" parent="BottomCenter/VBox/SlotsHBox/Slot2"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/margin_left = 8
+theme_override_constants/margin_top = 4
+theme_override_constants/margin_right = 8
+theme_override_constants/margin_bottom = 4
+
+[node name="VBox" type="VBoxContainer" parent="BottomCenter/VBox/SlotsHBox/Slot2/Margin"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 1
+
+[node name="HeaderHBox" type="HBoxContainer" parent="BottomCenter/VBox/SlotsHBox/Slot2/Margin/VBox"]
+layout_mode = 2
+mouse_filter = 2
+
+[node name="KeyTag" type="Label" parent="BottomCenter/VBox/SlotsHBox/Slot2/Margin/VBox/HeaderHBox"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.6, 0.8, 0.8, 1)
+theme_override_font_sizes/font_size = 11
+text = "[ KEY 3 ]"
+
+[node name="Status" type="Label" parent="BottomCenter/VBox/SlotsHBox/Slot2/Margin/VBox/HeaderHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.4, 0.6, 0.6, 1)
+theme_override_font_sizes/font_size = 9
+text = "READY"
+horizontal_alignment = 2
+
+[node name="WeaponTitle" type="Label" parent="BottomCenter/VBox/SlotsHBox/Slot2/Margin/VBox"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.75, 0.85, 0.85, 1)
+theme_override_font_sizes/font_size = 12
+text = "ION RAILGUN"
+
+[node name="WeaponSub" type="Label" parent="BottomCenter/VBox/SlotsHBox/Slot2/Margin/VBox"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.4, 0.6, 0.6, 1)
+theme_override_font_sizes/font_size = 9
+text = "Hyper Piercing"
 
 [node name="BottomRight" type="MarginContainer" parent="."]
 anchors_preset = 3
@@ -175,13 +407,13 @@ anchor_left = 1.0
 anchor_top = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = -380.0
-offset_top = -170.0
+offset_left = -315.0
+offset_top = -152.0
 grow_horizontal = 0
 grow_vertical = 0
 mouse_filter = 2
-theme_override_constants/margin_right = 28
-theme_override_constants/margin_bottom = 24
+theme_override_constants/margin_right = 18
+theme_override_constants/margin_bottom = 14
 
 [node name="Panel" type="PanelContainer" parent="BottomRight"]
 layout_mode = 2
@@ -191,14 +423,14 @@ theme_override_styles/panel = SubResource("StyleBoxFlat_hud_panel")
 [node name="VBox" type="VBoxContainer" parent="BottomRight/Panel"]
 layout_mode = 2
 mouse_filter = 2
-theme_override_constants/separation = 4
+theme_override_constants/separation = 3
 
 [node name="WeaponTag" type="Label" parent="BottomRight/Panel/VBox"]
 layout_mode = 2
 mouse_filter = 2
-theme_override_colors/font_color = Color(0, 1, 0.7, 1)
-theme_override_font_sizes/font_size = 13
-text = "WEAPON: [1] VANGUARD PULSE RIFLE"
+theme_override_colors/font_color = Color(0, 1, 0.85, 1)
+theme_override_font_sizes/font_size = 12
+text = "EQUIPPED: [1] PULSE RIFLE"
 
 [node name="HBox" type="HBoxContainer" parent="BottomRight/Panel/VBox"]
 layout_mode = 2
@@ -209,14 +441,14 @@ layout_mode = 2
 size_flags_horizontal = 3
 mouse_filter = 2
 theme_override_colors/font_color = Color(0, 1, 0.55, 1)
-theme_override_font_sizes/font_size = 12
+theme_override_font_sizes/font_size = 11
 text = "CORE TEMPERATURE"
 
 [node name="HeatVal" type="Label" parent="BottomRight/Panel/VBox/HBox"]
 layout_mode = 2
 mouse_filter = 2
 theme_override_colors/font_color = Color(0, 1, 0.55, 1)
-theme_override_font_sizes/font_size = 12
+theme_override_font_sizes/font_size = 11
 text = "0%"
 
 [node name="HeatBar" type="ProgressBar" parent="BottomRight/Panel/VBox"]
@@ -232,26 +464,26 @@ show_percentage = false
 layout_mode = 2
 mouse_filter = 2
 theme_override_colors/font_color = Color(0, 1, 0.55, 1)
-theme_override_font_sizes/font_size = 12
-text = "EMP DISRUPTOR: READY [Q / RMB]"
+theme_override_font_sizes/font_size = 11
+text = "EMP: READY [Q / RMB]"
 
 [node name="OverclockStatus" type="Label" parent="BottomRight/Panel/VBox"]
 layout_mode = 2
 mouse_filter = 2
-theme_override_colors/font_color = Color(0.2, 0.8, 1, 1)
-theme_override_font_sizes/font_size = 12
-text = "OVERCLOCK [F]: READY (BULLET TIME)"
+theme_override_colors/font_color = Color(0.2, 0.85, 1, 1)
+theme_override_font_sizes/font_size = 11
+text = "OVERCLOCK: READY [F]"
 
 [node name="TopCenter" type="MarginContainer" parent="."]
 anchors_preset = 5
 anchor_left = 0.5
 anchor_right = 0.5
-offset_left = -260.0
-offset_right = 260.0
-offset_bottom = 85.0
+offset_left = -250.0
+offset_right = 250.0
+offset_bottom = 118.0
 grow_horizontal = 2
 mouse_filter = 2
-theme_override_constants/margin_top = 18
+theme_override_constants/margin_top = 14
 
 [node name="Panel" type="PanelContainer" parent="TopCenter"]
 layout_mode = 2
@@ -267,28 +499,67 @@ theme_override_constants/separation = 2
 layout_mode = 2
 mouse_filter = 2
 theme_override_colors/font_color = Color(0, 1, 0.55, 1)
-theme_override_font_sizes/font_size = 15
-text = "SECTOR ALERT // WAVE 1"
+theme_override_font_sizes/font_size = 14
+text = "SECTOR ALERT // WAVE 1 OF 4"
 horizontal_alignment = 1
 
 [node name="WaveSubtitle" type="Label" parent="TopCenter/Panel/VBox"]
 layout_mode = 2
 mouse_filter = 2
 theme_override_colors/font_color = Color(0.5, 0.9, 0.7, 1)
-theme_override_font_sizes/font_size = 12
-text = "COLOSSAL GOLIATH ENFORCER // 1 TITAN DETECTED"
+theme_override_font_sizes/font_size = 11
+text = "RECON SCOUT INFILTRATION // 4 LIGHT UNITS DETECTED"
+horizontal_alignment = 1
+
+[node name="ObjectiveTag" type="Label" parent="TopCenter/Panel/VBox"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.95, 0.9, 0.3, 1)
+theme_override_font_sizes/font_size = 11
+text = "OBJECTIVE: ELIMINATE RECON SCOUTS [ 4 REMAINING ]"
+horizontal_alignment = 1
+
+[node name="BossContainer" type="VBoxContainer" parent="TopCenter/Panel/VBox"]
+visible = false
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 2
+
+[node name="BossTitle" type="Label" parent="TopCenter/Panel/VBox/BossContainer"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_colors/font_color = Color(1, 0.25, 0.25, 1)
+theme_override_font_sizes/font_size = 11
+text = "APEX TITAN OMEGA-ZERO // PROTOCOL FLAGSHIP"
+horizontal_alignment = 1
+
+[node name="BossBar" type="ProgressBar" parent="TopCenter/Panel/VBox/BossContainer"]
+custom_minimum_size = Vector2(0, 9)
+layout_mode = 2
+mouse_filter = 2
+theme_override_styles/background = SubResource("StyleBoxFlat_bar_bg")
+theme_override_styles/fill = SubResource("StyleBoxFlat_boss_fg")
+value = 100.0
+show_percentage = false
+
+[node name="BossHPText" type="Label" parent="TopCenter/Panel/VBox/BossContainer"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_colors/font_color = Color(1, 0.4, 0.4, 1)
+theme_override_font_sizes/font_size = 10
+text = "1600 / 1600 HP (100%)"
 horizontal_alignment = 1
 
 [node name="TopRight" type="MarginContainer" parent="."]
 anchors_preset = 1
 anchor_left = 1.0
 anchor_right = 1.0
-offset_left = -260.0
-offset_bottom = 90.0
+offset_left = -250.0
+offset_bottom = 85.0
 grow_horizontal = 0
 mouse_filter = 2
-theme_override_constants/margin_top = 18
-theme_override_constants/margin_right = 28
+theme_override_constants/margin_top = 14
+theme_override_constants/margin_right = 18
 
 [node name="Panel" type="PanelContainer" parent="TopRight"]
 layout_mode = 2
@@ -303,14 +574,14 @@ mouse_filter = 2
 layout_mode = 2
 mouse_filter = 2
 theme_override_colors/font_color = Color(0, 1, 0.55, 1)
-theme_override_font_sizes/font_size = 13
+theme_override_font_sizes/font_size = 12
 text = "SQUAD ALLIANCE"
 
 [node name="AllyCount" type="Label" parent="TopRight/Panel/VBox"]
 layout_mode = 2
 mouse_filter = 2
 theme_override_colors/font_color = Color(0.8, 1, 0.9, 1)
-theme_override_font_sizes/font_size = 14
+theme_override_font_sizes/font_size = 13
 text = "0 / 3 ACTIVE"
 
 [node name="HBox" type="HBoxContainer" parent="TopRight/Panel/VBox"]
@@ -321,22 +592,22 @@ mouse_filter = 2
 layout_mode = 2
 mouse_filter = 2
 theme_override_colors/font_color = Color(0.5, 0.9, 0.7, 1)
-theme_override_font_sizes/font_size = 12
+theme_override_font_sizes/font_size = 11
 text = "SCORE: "
 
 [node name="ScoreVal" type="Label" parent="TopRight/Panel/VBox/HBox"]
 layout_mode = 2
 mouse_filter = 2
 theme_override_colors/font_color = Color(0, 1, 0.55, 1)
-theme_override_font_sizes/font_size = 12
+theme_override_font_sizes/font_size = 11
 text = "00000"
 
 [node name="TopLeft" type="MarginContainer" parent="."]
-offset_right = 380.0
-offset_bottom = 90.0
+offset_right = 300.0
+offset_bottom = 85.0
 mouse_filter = 2
-theme_override_constants/margin_left = 28
-theme_override_constants/margin_top = 18
+theme_override_constants/margin_left = 18
+theme_override_constants/margin_top = 14
 
 [node name="Panel" type="PanelContainer" parent="TopLeft"]
 layout_mode = 2
@@ -351,13 +622,59 @@ mouse_filter = 2
 layout_mode = 2
 mouse_filter = 2
 theme_override_colors/font_color = Color(0, 1, 0.55, 1)
-theme_override_font_sizes/font_size = 13
+theme_override_font_sizes/font_size = 12
 text = "MAYA // TACTICAL COMMS"
 
 [node name="Message" type="Label" parent="TopLeft/Panel/VBox"]
 layout_mode = 2
 mouse_filter = 2
 theme_override_colors/font_color = Color(0.85, 0.95, 0.9, 1)
-theme_override_font_sizes/font_size = 12
+theme_override_font_sizes/font_size = 11
 text = "Kai! Rogue robots have broken containment."
 autowrap_mode = 2
+
+[node name="WaveClearBanner" type="PanelContainer" parent="."]
+visible = false
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -260.0
+offset_top = -65.0
+offset_right = 260.0
+offset_bottom = 65.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_banner_panel")
+
+[node name="VBox" type="VBoxContainer" parent="WaveClearBanner"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 6
+alignment = 1
+
+[node name="BannerTitle" type="Label" parent="WaveClearBanner/VBox"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_colors/font_color = Color(0, 1, 0.65, 1)
+theme_override_font_sizes/font_size = 20
+text = "SECTOR SECURED // WAVE COMPLETED"
+horizontal_alignment = 1
+
+[node name="BannerReward" type="Label" parent="WaveClearBanner/VBox"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.8, 1, 0.9, 1)
+theme_override_font_sizes/font_size = 13
+text = "+500 CREDITS | REPAIRING SUIT (+100 SHIELD, +1 STIM)"
+horizontal_alignment = 1
+
+[node name="BannerCountdown" type="Label" parent="WaveClearBanner/VBox"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.4, 0.9, 1, 1)
+theme_override_font_sizes/font_size = 12
+text = "NEXT THREAT WAVE INCOMING IN 3..."
+horizontal_alignment = 1
