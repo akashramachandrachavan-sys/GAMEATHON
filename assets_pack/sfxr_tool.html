@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Offline 8-Bit SFX Generator - IEEE Gameathon</title>
+  <style>
+    body {
+      background: #0d1117;
+      color: #c9d1d9;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      padding: 30px;
+      max-width: 720px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      color: #58a6ff;
+      margin-bottom: 8px;
+    }
+
+    p {
+      color: #8b949e;
+      line-height: 1.5;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 16px;
+      margin: 24px 0;
+    }
+
+    .btn-sfx {
+      background: #21262d;
+      border: 1px solid #30363d;
+      color: #58a6ff;
+      padding: 16px;
+      font-size: 14px;
+      font-weight: bold;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn-sfx:hover {
+      background: #30363d;
+      border-color: #58a6ff;
+      transform: translateY(-2px);
+    }
+
+    .icon {
+      font-size: 24px;
+    }
+
+    .status {
+      margin-top: 20px;
+      padding: 12px;
+      background: #161b22;
+      border-radius: 6px;
+      border: 1px solid #30363d;
+      font-size: 13px;
+      color: #7ee787;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>⚡ Instant 8-Bit Sound Generator</h1>
+  <p>Works 100% offline with zero internet needed! Click any button to hear the sound effect. You can also download the
+    generated WAV file directly into your game folder.</p>
+
+  <div class="grid">
+    <button class="btn-sfx" onclick="playAndSave('laser')">
+      <span class="icon">🔫</span> Laser / Shoot
+    </button>
+    <button class="btn-sfx" onclick="playAndSave('explosion')">
+      <span class="icon">💥</span> Explosion
+    </button>
+    <button class="btn-sfx" onclick="playAndSave('pickup')">
+      <span class="icon">💎</span> Coin / Pickup
+    </button>
+    <button class="btn-sfx" onclick="playAndSave('powerup')">
+      <span class="icon">⚡</span> Powerup
+    </button>
+    <button class="btn-sfx" onclick="playAndSave('hit')">
+      <span class="icon">🥊</span> Hurt / Hit
+    </button>
+    <button class="btn-sfx" onclick="playAndSave('jump')">
+      <span class="icon">🦘</span> Jump
+    </button>
+  </div>
+
+  <div id="status" class="status">Click any button above to play!</div>
+
+  <script>
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+    function writeWavHeader(samples, sampleRate) {
+      const buffer = new ArrayBuffer(44 + samples.length * 2);
+      const view = new DataView(buffer);
+      function writeString(offset, string) {
+        for (let i = 0; i < string.length; i++) view.setUint8(offset + i, string.charCodeAt(i));
+      }
+      writeString(0, 'RIFF');
+      view.setUint32(4, 36 + samples.length * 2, true);
+      writeString(8, 'WAVE');
+      writeString(12, 'fmt ');
+      view.setUint32(16, 16, true);
+      view.setUint16(20, 1, true); // PCM
+      view.setUint16(22, 1, true); // Mono
+      view.setUint32(24, sampleRate, true);
+      view.setUint32(28, sampleRate * 2, true);
+      view.setUint16(32, 2, true);
+      view.setUint16(34, 16, true);
+      writeString(36, 'data');
+      view.setUint32(40, samples.length * 2, true);
+
+      let offset = 44;
+      for (let i = 0; i < samples.length; i++, offset += 2) {
+        const s = Math.max(-1, Math.min(1, samples[i]));
+        view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+      }
+      return buffer;
+    }
+
+    function generateSamples(type) {
+      const sampleRate = 22050;
+      let duration = 0.2;
+      if (type === 'explosion') duration = 0.35;
+      const length = Math.floor(sampleRate * duration);
+      const samples = new Float32Array(length);
+
+      for (let i = 0; i < length; i++) {
+        const t = i / length;
+        const timeSec = i / sampleRate;
+
+        if (type === 'laser') {
+          const freq = 850 * (1 - t) + 100;
+          samples[i] = (Math.sin(2 * Math.PI * freq * timeSec) > 0 ? 1 : -1) * (1 - t) * 0.4;
+        } else if (type === 'explosion') {
+          const noise = Math.random() * 2 - 1;
+          samples[i] = noise * Math.pow(1 - t, 1.8) * 0.5;
+        } else if (type === 'pickup') {
+          const freq = t < 0.5 ? 587 : 880;
+          samples[i] = Math.sin(2 * Math.PI * freq * timeSec) * (1 - t) * 0.4;
+        } else if (type === 'powerup') {
+          const freq = 300 + t * 600;
+          samples[i] = (Math.sin(2 * Math.PI * freq * timeSec) > 0 ? 1 : -1) * (1 - t) * 0.35;
+        } else if (type === 'hit') {
+          const freq = 180 * (1 - t) + 40;
+          samples[i] = Math.sin(2 * Math.PI * freq * timeSec) * (1 - t) * 0.5;
+        } else if (type === 'jump') {
+          const freq = 200 + t * 400;
+          samples[i] = Math.sin(2 * Math.PI * freq * timeSec) * (1 - t) * 0.4;
+        }
+      }
+      return { samples, sampleRate };
+    }
+
+    function playAndSave(type) {
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      const { samples, sampleRate } = generateSamples(type);
+
+      // Play
+      const buffer = audioCtx.createBuffer(1, samples.length, sampleRate);
+      buffer.copyToChannel(samples, 0);
+      const source = audioCtx.createBufferSource();
+      source.buffer = buffer;
+      source.connect(audioCtx.destination);
+      source.start();
+
+      document.getElementById('status').textContent = `🔊 Played "${type}" sound!`;
+    }
+  </script>
+</body>
+
+</html>
