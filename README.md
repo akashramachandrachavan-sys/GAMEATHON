@@ -1,42 +1,47 @@
-# ⚡ IEEE GAMEATHON - Complete Starter Toolkit & Game Pack
+# ⚡ IEEE GAMEATHON - Official Submission
 
-Welcome! Your machine is 100% pre-configured and loaded with ready-to-run game templates, engines, audio tools, and survival guides for today's 4-hour gameathon.
-
----
-
-## 🚀 Quick Launch Dashboard (Pick Your Weapon)
-
-| Template | Tech Stack | How to Run | Best For |
-|---|---|---|---|
-| **[01_web_arcade](./01_web_arcade/)** | HTML5 Canvas + Procedural Web Audio | Double-click `index.html` or run `./run.sh` | **RECOMMENDED #1**: Instant play in browser, zero compile lag, guaranteed 60fps, built-in particle & audio juice! |
-| **[02_python_pygame](./02_python_pygame/)** | Python 3 + Pygame-CE | Run `./run.sh` | Classic Python desktop game, custom 8-bit procedural sounds, clean classes. |
-| **[03_godot_starter](./03_godot_starter/)** | Godot Engine 4.7 | Run `./run.sh` or open `Godot.app` | Official GUI game engine (installed at `/Applications/Godot.app`). |
-| **[04_phaser3_vite](./04_phaser3_vite/)** | Phaser 3 + Vite | Run `./run.sh` | Modern JavaScript/TS 2D arcade physics engine with hot reload. |
-| **[assets_pack](./assets_pack/)** | Offline SFX Generator | Open `assets_pack/sfxr_tool.html` | Click-to-generate 8-bit sound effects with zero internet needed! |
+**Theme:** 🤖 **ROBOT REVOLT**  
+**Game Title:** **REVOLT 2150: SQUAD ALLIANCE**  
+**Engine:** **Godot Engine 4.7 (Native 3D / Vulkan & Metal Pipeline)**  
 
 ---
 
-## 📖 Must-Read Before 10:00 AM:
-👉 **[HACKATHON_SURVIVAL_GUIDE.md](./HACKATHON_SURVIVAL_GUIDE.md)**:
-- How games actually work (The 5-minute crash course on the Game Loop).
-- The 4-Hour Time Breakdown (Avoid scope creep!).
-- How to adapt your game to ANY surprise theme in 5 minutes.
-- The 2-minute winning pitch script for judges.
+## 🌟 Game Project: [`revolt_godot`](./revolt_godot/)
+An industrial cyberpunk 3D mech combat game inspired by *RoboCop: Rogue City* and classic bipedal battle walkers.
+
+- **10-15s Cinematic Story Intro**: Dr. Sterling's 22nd-century defense protocol, the catastrophic corruption of Titan prototype Omega-Zero, and the teen resistance led by Kai, Maya, and Jax.
+- **Cyberpunk Boxing Ring Arena**: Elevated heavy steel combat ring with 4 hydraulic corner turnbuckles, hazard perimeter stripes, glowing containment cables, and overhead stadium spotlights.
+- **Reverse-Joint Bipedal Mech Mechanics**: Procedural walk cycles, hydraulic footstep audio, chassis recoil, and rear thruster dash.
+- **Robot Alliance Reprogramming System**: Fire an EMP Shockwave [Q] to stun rogue droids within a 14m radius, then hold [E] up close to reprogram them into loyal squad allies that protect Kai and attack enemies.
+- **RoboCop Holographic Cockpit HUD**: Visor crosshair, mech chassis integrity %, autocannon heat gauge, EMP capacitor meter, alliance squad counter, and live comms chatter from Maya & Jax.
+- **Boss Battle**: Fight past Wave 1 Grunts and Wave 2 Heavy Bruisers to defeat the rogue titan **OMEGA-ZERO**!
 
 ---
 
-## 🎮 Pre-installed Engines & Tools on Your Machine:
-- **Godot 4.7.2**: Installed in `/Applications/Godot.app` (CLI: `godot`)
-- **Pygame Community Edition (v2.5.8)**: Installed in `.venv/`
-- **Node.js & npm (v24.19.0)**: Ready with Vite and Phaser 3
-- **Python 3.14**: Ready with virtual environment `.venv/`
+## 🚀 Quick Launch
+
+To play immediately:
+```bash
+cd revolt_godot
+./run_game.sh
+```
+
+To edit in Godot Engine:
+```bash
+cd revolt_godot
+./edit_game.sh
+```
 
 ---
 
-## ⚡ Secret Demo Hotkeys (Built Into the Templates):
-- `F1`: **God Mode** (Toggle invincibility — never die while pitching to judges!)
-- `F2`: **Next Wave** (Skip to next wave / boss)
-- `F3`: **Add +5000 Score**
-- `P` / `Esc`: **Pause / Resume**
+## 🎮 Controls
 
-Good luck, crush the Gameathon! 👾🔥
+| Action | Input |
+| :--- | :--- |
+| **Move Walker** | `W` `A` `S` `D` |
+| **Aim Turret / Cockpit** | `Mouse` |
+| **Dual Heavy Autocannons** | `Left Click` |
+| **EMP Shockwave Blast** | `Q` or `Right Click` |
+| **Reprogram Alliance** | Hold `E` (near stunned bot) |
+| **Rocket Thruster Dash** | `Spacebar` |
+| **Toggle Mouse Capture** | `ESC` |
