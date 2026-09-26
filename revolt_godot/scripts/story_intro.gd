@@ -71,8 +71,11 @@ func _display_slide(idx: int) -> void:
 
 func _finish_intro() -> void:
 	set_process(false)
+	var bg = get_node_or_null("Background")
+	var panel = get_node_or_null("Panel")
 	var t = create_tween()
-	t.tween_property(self, "modulate:a", 0.0, 0.4)
+	if bg: t.tween_property(bg, "modulate:a", 0.0, 0.3)
+	if panel: t.parallel().tween_property(panel, "modulate:a", 0.0, 0.3)
 	t.tween_callback(func():
 		intro_completed.emit()
 		queue_free()

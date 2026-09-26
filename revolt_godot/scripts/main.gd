@@ -33,46 +33,56 @@ func _setup_environment() -> void:
 	world_env = WorldEnvironment.new()
 	var env = Environment.new()
 	
-	# Realistic Cyberpunk Sky / Warehouse Dome
+	# Rich Cyberpunk Twilight Sky
 	env.background_mode = Environment.BG_SKY
 	var sky = Sky.new()
 	var sky_mat = ProceduralSkyMaterial.new()
-	sky_mat.sky_top_color = Color(0.12, 0.16, 0.24)
-	sky_mat.sky_horizon_color = Color(0.24, 0.3, 0.42)
-	sky_mat.ground_bottom_color = Color(0.08, 0.1, 0.14)
-	sky_mat.ground_horizon_color = Color(0.18, 0.22, 0.3)
-	sky_mat.sun_angle_max = 30.0
+	sky_mat.sky_top_color = Color(0.08, 0.12, 0.22)
+	sky_mat.sky_horizon_color = Color(0.22, 0.32, 0.50)
+	sky_mat.ground_bottom_color = Color(0.04, 0.06, 0.09)
+	sky_mat.ground_horizon_color = Color(0.14, 0.18, 0.28)
+	sky_mat.sun_angle_max = 45.0
 	sky.sky_material = sky_mat
 	env.sky = sky
 	
-	# PBR Ambient Lighting & Sky Reflections (Gives metallic armor natural reflections)
+	# PBR Ambient Lighting & Sky Reflections
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
-	env.ambient_light_color = Color(0.35, 0.42, 0.55)
-	env.ambient_light_sky_contribution = 0.9
-	env.ambient_light_energy = 1.8
+	env.ambient_light_color = Color(0.40, 0.48, 0.62)
+	env.ambient_light_sky_contribution = 0.85
+	env.ambient_light_energy = 1.5
 	
-	# Soft bloom / glow (No blinding additive blowouts!)
+	# Clean Soft Bloom
 	env.glow_enabled = true
-	env.glow_intensity = 0.5
-	env.glow_bloom = 0.05
+	env.glow_intensity = 0.65
+	env.glow_bloom = 0.08
 	env.glow_blend_mode = Environment.GLOW_BLEND_MODE_SOFTLIGHT
 	
-	# Filmic / ACES Tonemapping
+	# ACES Filmic Tonemapping
 	env.tonemap_mode = Environment.TONE_MAPPER_ACES
-	env.tonemap_exposure = 1.25
+	env.tonemap_exposure = 1.35
 	
-	# Screen-space Ambient Occlusion (SSAO) for grounded contact shadows
+	# Screen-space Ambient Occlusion (SSAO)
 	env.ssao_enabled = true
-	env.ssao_radius = 1.8
-	env.ssao_intensity = 2.2
+	env.ssao_radius = 2.0
+	env.ssao_intensity = 2.4
 	
-	# Subtle atmospheric depth haze (Light and clean)
+	# Light atmospheric haze
 	env.fog_enabled = true
-	env.fog_light_color = Color(0.1, 0.14, 0.2)
-	env.fog_density = 0.001
+	env.fog_light_color = Color(0.12, 0.16, 0.25)
+	env.fog_density = 0.0012
 	
 	world_env.environment = env
 	add_child(world_env)
+	
+	# Cinematic Key Light with Crisp Shadows
+	var sun = DirectionalLight3D.new()
+	sun.light_color = Color(0.88, 0.94, 1.0)
+	sun.light_energy = 1.6
+	sun.shadow_enabled = true
+	sun.shadow_bias = 0.04
+	sun.shadow_blur = 1.2
+	sun.rotation_degrees = Vector3(-48, 38, 0)
+	add_child(sun)
 
 func _setup_arena() -> void:
 	var arena_script = load("res://scripts/arena.gd")
@@ -104,8 +114,12 @@ func _start_gameplay() -> void:
 	
 	# Connect Player Signals to HUD
 	player.health_changed.connect(hud.update_health)
+	player.shield_changed.connect(hud.update_shield)
+	player.stim_changed.connect(hud.update_stims)
+	player.weapon_changed.connect(hud.update_weapon)
 	player.heat_updated.connect(hud.update_heat)
 	player.emp_cooldown_updated.connect(hud.update_emp)
+	player.overclock_updated.connect(hud.update_overclock)
 	player.reprogram_progress_updated.connect(hud.update_reprogram_progress)
 	
 	hud.update_allies(active_allies, max_allies)

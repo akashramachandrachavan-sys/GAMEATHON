@@ -1,50 +1,86 @@
 extends CharacterBody3D
 
-# Teen Resistance Hero: KAI (Human Cyberpunk Operative 3D Model & Combat Controller)
-# Equipped with Bullpup EMP Pulse Rifle, Cybernetic Hacking Gauntlet, and Tactical Jet Slide.
+# Teen Resistance Hero: KAI (Full Cyberpunk Operative 3D Model & AAA Combat Controller)
+# Features: 3 Switchable Weapons (Pulse Rifle, Plasma Shotgun, Ion Railgun), Overclock Bullet-Time,
+# Tactical Energy Shield with Auto-Recharge, Nano-Stim Injectors, Double Jump & Jet Slide.
 
 signal health_changed(current_hp, max_hp)
-signal emp_cooldown_updated(current, max_time)
+signal shield_changed(current_shield, max_shield)
+signal stim_changed(count)
+signal weapon_changed(weapon_name)
 signal heat_updated(current_heat, max_heat)
+signal emp_cooldown_updated(current, max_time)
+signal overclock_updated(is_ready, remaining_cd)
 signal alliance_count_updated(current_count, max_count)
 signal reprogram_progress_updated(progress)
 
-const SPEED = 8.5
-const SPRINT_SPEED = 14.5
-const ACCEL = 18.0
+# Movement Constants
+const SPEED = 9.0
+const SPRINT_SPEED = 15.0
+const JUMP_VELOCITY = 11.5
+const AIR_BOOST_VELOCITY = 9.0
+const ACCEL = 20.0
 const ROT_SPEED = 14.0
 const MOUSE_SENSITIVITY = 0.0025
 
-var max_health: float = 100.0
-var health: float = 100.0
+# Health & Tactical Shield System (High Survivability)
+var max_health: float = 300.0
+var health: float = 300.0
+var max_shield: float = 200.0
+var shield: float = 200.0
+var shield_regen_delay: float = 2.8
+var shield_regen_timer: float = 0.0
+var shield_regen_rate: float = 60.0
+var invuln_timer: float = 0.0
+var stim_packs: int = 2
 var team: String = "player"
+
+# Weapons Arsenal (Switchable via [1], [2], [3] or Mouse Wheel)
+# 0: Vanguard Pulse Rifle, 1: Plasma Shotgun, 2: Ion Railgun
+var current_weapon: int = 0
+var weapon_names = [
+	"[1] VANGUARD PULSE RIFLE",
+	"[2] SCATTER PLASMA SHOTGUN",
+	"[3] HYPER ION RAILGUN"
+]
+
+# Weapon Stats
+var fire_timers = [0.0, 0.0, 0.0]
+var fire_rates = [0.10, 0.58, 1.05]
+var max_heat: float = 100.0
+var current_heat: float = 0.0
+var is_overheated: bool = false
+var is_scoped: bool = false
+
+# Overclock Cyber Drive (Bullet Time)
+var overclock_max_cooldown: float = 16.0
+var overclock_cooldown: float = 0.0
+var is_overclocked: bool = false
+var overclock_timer: float = 0.0
+var overclock_duration: float = 4.2
 
 # EMP Disruptor
 var emp_max_cooldown: float = 6.0
 var emp_cooldown: float = 0.0
-var emp_radius: float = 20.0
+var emp_radius: float = 22.0
 
-# Pulse Rifle & Overheat
-var max_heat: float = 100.0
-var current_heat: float = 0.0
-var is_overheated: bool = false
-var fire_rate: float = 0.11
-var fire_timer: float = 0.0
-
-# Tactical Slide / Dash
+# Tactical Slide & Jet Jump
 var dash_cooldown: float = 0.0
 var is_dashing: bool = false
 var dash_timer: float = 0.0
+var can_air_boost: bool = true
 
-# Procedural Locomotion
+# Procedural Locomotion & Weapon Sway
 var run_cycle: float = 0.0
 var step_interval: float = 0.28
 var step_timer: float = 0.0
+var sway_offset: Vector2 = Vector2.ZERO
 
 # Camera
-var camera_pitch: float = -12.0
+var camera_pitch: float = -10.0
 var camera_yaw: float = 0.0
 var camera_shake: float = 0.0
+var target_fov: float = 74.0
 
 # Node References
 var camera_pivot: Node3D
@@ -59,11 +95,15 @@ var left_shin: Node3D
 var right_shin: Node3D
 var left_arm: Node3D
 var right_arm: Node3D
-var rifle: Node3D
-var muzzle: Marker3D
+var rifle_mount: Node3D
+var gun_mesh_rifle: Node3D
+var gun_mesh_shotgun: Node3D
+var gun_mesh_railgun: Node3D
+var muzzle_marker: Marker3D
 var muzzle_light: OmniLight3D
-var muzzle_smoke: CPUParticles3D
 var dash_particles: CPUParticles3D
+var overclock_particles: CPUParticles3D
+var shield_shimmer: MeshInstance3D
 var backpack_reactor_mat: StandardMaterial3D
 
 # Reprogram target
@@ -76,9 +116,15 @@ func _ready() -> void:
 	_setup_camera()
 	_setup_collision()
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+	
 	health_changed.emit(health, max_health)
+	shield_changed.emit(shield, max_shield)
+	stim_changed.emit(stim_packs)
+	weapon_changed.emit(weapon_names[current_weapon])
 	emp_cooldown_updated.emit(0.0, emp_max_cooldown)
+	overclock_updated.emit(true, 0.0)
 	heat_updated.emit(current_heat, max_heat)
+	_switch_weapon(0)
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.pressed:
@@ -90,6 +136,17 @@ func _unhandled_input(event: InputEvent) -> void:
 		camera_pitch -= event.relative.y * MOUSE_SENSITIVITY * 40.0
 		camera_pitch = clamp(camera_pitch, -55.0, 30.0)
 		
+		# Procedural weapon sway
+		sway_offset.x = clamp(sway_offset.x - event.relative.x * 0.0015, -0.08, 0.08)
+		sway_offset.y = clamp(sway_offset.y + event.relative.y * 0.0015, -0.06, 0.06)
+		
+	# Mouse Wheel Weapon Switching
+	if event is InputEventMouseButton and event.pressed:
+		if event.button_index == MOUSE_BUTTON_WHEEL_UP:
+			_switch_weapon((current_weapon + 1) % 3)
+		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
+			_switch_weapon((current_weapon + 2) % 3)
+			
 	if event.is_action_pressed("ui_cancel") or (event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE):
 		if Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
 			Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
@@ -97,7 +154,29 @@ func _unhandled_input(event: InputEvent) -> void:
 			Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 
 func _physics_process(delta: float) -> void:
-	# Cooldowns
+	# Shield Auto-Recharge System
+	if invuln_timer > 0.0:
+		invuln_timer = max(0.0, invuln_timer - delta)
+		if shield_shimmer: shield_shimmer.visible = true
+	elif shield_shimmer:
+		shield_shimmer.visible = false
+		
+	if shield_regen_timer > 0.0:
+		shield_regen_timer = max(0.0, shield_regen_timer - delta)
+	elif shield < max_shield:
+		shield = min(max_shield, shield + shield_regen_rate * delta)
+		shield_changed.emit(shield, max_shield)
+		
+	# Overclock Bullet Time Update
+	if is_overclocked:
+		overclock_timer -= delta / Engine.time_scale
+		if overclock_timer <= 0.0:
+			_deactivate_overclock()
+	elif overclock_cooldown > 0.0:
+		overclock_cooldown = max(0.0, overclock_cooldown - delta)
+		overclock_updated.emit(overclock_cooldown <= 0.0, overclock_cooldown)
+
+	# EMP & Dash Cooldowns
 	if emp_cooldown > 0.0:
 		emp_cooldown = max(0.0, emp_cooldown - delta)
 		emp_cooldown_updated.emit(emp_cooldown, emp_max_cooldown)
@@ -105,8 +184,9 @@ func _physics_process(delta: float) -> void:
 	if dash_cooldown > 0.0:
 		dash_cooldown = max(0.0, dash_cooldown - delta)
 		
+	# Weapon Heat Dissipation
 	if current_heat > 0.0:
-		var cooling_speed = 50.0 if is_overheated else 75.0
+		var cooling_speed = 55.0 if is_overheated else 80.0
 		current_heat = max(0.0, current_heat - cooling_speed * delta)
 		if is_overheated and current_heat <= 10.0:
 			is_overheated = false
@@ -114,10 +194,10 @@ func _physics_process(delta: float) -> void:
 
 	# Backpack reactor visual pulsation
 	if backpack_reactor_mat:
-		var pulse = (sin(Time.get_ticks_msec() * 0.005) + 1.0) * 0.5
-		backpack_reactor_mat.emission_energy_multiplier = 2.2 if emp_cooldown <= 0.0 else (0.5 + pulse * 0.5)
+		var pulse = (sin(Time.get_ticks_msec() * 0.006) + 1.0) * 0.5
+		backpack_reactor_mat.emission_energy_multiplier = 3.0 if emp_cooldown <= 0.0 else (0.8 + pulse * 0.6)
 
-	# 100% Robust Hardware-Level WASD + Arrow Key Input Detection
+	# 100% Robust Hardware Scan-Code WASD + Arrow Key Polling
 	var input_dir = Vector2.ZERO
 	if Input.is_physical_key_pressed(KEY_W) or Input.is_key_pressed(KEY_W) or Input.is_physical_key_pressed(KEY_UP) or Input.is_key_pressed(KEY_UP) or Input.is_action_pressed("move_forward"):
 		input_dir.y += 1.0
@@ -129,62 +209,90 @@ func _physics_process(delta: float) -> void:
 		input_dir.x += 1.0
 	input_dir = input_dir.normalized()
 	
-	# Tactical Jet Slide / Dash (Spacebar)
-	var dash_pressed = Input.is_physical_key_pressed(KEY_SPACE) or Input.is_key_pressed(KEY_SPACE) or Input.is_action_just_pressed("dash")
-	if dash_pressed and dash_cooldown <= 0.0 and input_dir != Vector2.ZERO:
-		is_dashing = true
-		dash_timer = 0.32
-		dash_cooldown = 1.4
-		AudioManager.play_dash()
-		camera_shake = 0.4
-		if dash_particles: dash_particles.emitting = true
-		
+	# Weapon Switch Hotkeys [1], [2], [3]
+	if Input.is_physical_key_pressed(KEY_1) or Input.is_key_pressed(KEY_1):
+		_switch_weapon(0)
+	elif Input.is_physical_key_pressed(KEY_2) or Input.is_key_pressed(KEY_2):
+		_switch_weapon(1)
+	elif Input.is_physical_key_pressed(KEY_3) or Input.is_key_pressed(KEY_3):
+		_switch_weapon(2)
+
+	# Nano-Stim Pack Injector [C]
+	if (Input.is_physical_key_pressed(KEY_C) or Input.is_key_pressed(KEY_C)) and stim_packs > 0 and health < max_health:
+		_use_stim_pack()
+
+	# Overclock Cyber Drive [F] or [X]
+	if (Input.is_physical_key_pressed(KEY_F) or Input.is_key_pressed(KEY_F) or Input.is_physical_key_pressed(KEY_X)) and overclock_cooldown <= 0.0 and not is_overclocked:
+		_activate_overclock()
+
+	# Jump & Cyber Air Boost [Spacebar]
+	if is_on_floor():
+		can_air_boost = true
+		if Input.is_physical_key_pressed(KEY_SPACE) or Input.is_key_pressed(KEY_SPACE) or Input.is_action_just_pressed("dash"):
+			velocity.y = JUMP_VELOCITY
+			AudioManager.play_dash()
+	else:
+		velocity.y -= 26.0 * delta
+		if can_air_boost and (Input.is_physical_key_pressed(KEY_SPACE) or Input.is_action_just_pressed("dash")):
+			can_air_boost = false
+			velocity.y = AIR_BOOST_VELOCITY
+			if input_dir != Vector2.ZERO:
+				var cam_f = Vector3(-sin(camera_yaw), 0, -cos(camera_yaw)).normalized()
+				var cam_r = Vector3(cos(camera_yaw), 0, -sin(camera_yaw)).normalized()
+				var boost_dir = (cam_f * input_dir.y + cam_r * input_dir.x).normalized()
+				velocity.x = boost_dir.x * SPRINT_SPEED
+				velocity.z = boost_dir.z * SPRINT_SPEED
+			AudioManager.play_dash()
+			camera_shake = 0.3
+			if dash_particles: dash_particles.restart()
+
+	# Tactical Jet Slide (Shift or Alt or fast dash)
+	var shift_pressed = Input.is_physical_key_pressed(KEY_SHIFT) or Input.is_key_pressed(KEY_SHIFT)
+	var sprint_mod = 1.0
 	if is_dashing:
+		sprint_mod = 1.6
 		dash_timer -= delta
 		if dash_timer <= 0.0:
 			is_dashing = false
 			if dash_particles: dash_particles.emitting = false
+	elif shift_pressed and is_on_floor() and input_dir != Vector2.ZERO and dash_cooldown <= 0.0:
+		is_dashing = true
+		dash_timer = 0.38
+		dash_cooldown = 1.2
+		AudioManager.play_dash()
+		camera_shake = 0.35
+		if dash_particles: dash_particles.emitting = true
 
-	# Calculate World Direction based on camera yaw
-	# Camera forward vector is (-sin(yaw), 0, -cos(yaw))
+	# Calculate World Movement
 	var cam_forward = Vector3(-sin(camera_yaw), 0, -cos(camera_yaw)).normalized()
 	var cam_right = Vector3(cos(camera_yaw), 0, -sin(camera_yaw)).normalized()
 	var move_vec = (cam_forward * input_dir.y + cam_right * input_dir.x).normalized()
 	
-	var target_speed = SPEED
-	if is_dashing:
-		target_speed = SPRINT_SPEED * 1.55
-		
-	var target_vel = move_vec * target_speed
+	var cur_speed = SPEED * sprint_mod
+	if is_overclocked: cur_speed *= 1.4 # Boosted during bullet time
+	
+	var target_vel = move_vec * cur_speed
 	velocity.x = lerp(velocity.x, target_vel.x, ACCEL * delta)
 	velocity.z = lerp(velocity.z, target_vel.z, ACCEL * delta)
-	if not is_on_floor():
-		velocity.y -= 25.0 * delta
-	else:
-		velocity.y = 0.0
-		
 	move_and_slide()
 	
-	# Kai faces crosshair aiming direction smoothly
+	# Smoothly face aiming crosshair
 	rotation.y = lerp_angle(rotation.y, camera_yaw, ROT_SPEED * delta)
 	
 	# Procedural Locomotion Animations
-	if move_vec.length() > 0.1:
+	if move_vec.length() > 0.1 and is_on_floor():
 		run_cycle += delta * (16.0 if not is_dashing else 26.0)
 		var leg_angle = sin(run_cycle) * (34.0 if not is_dashing else 48.0)
 		left_leg.rotation_degrees.x = leg_angle
 		right_leg.rotation_degrees.x = -leg_angle
 		
-		# Knee joint flexion
 		if left_shin: left_shin.rotation_degrees.x = max(0.0, -leg_angle * 0.8)
 		if right_shin: right_shin.rotation_degrees.x = max(0.0, leg_angle * 0.8)
 		
 		# Torso dynamic bounce, tilt, and banking
 		torso.position.y = 0.95 + abs(sin(run_cycle * 2.0)) * 0.06
-		torso.rotation_degrees.z = -input_dir.x * 6.0 # Bank into turns
-		torso.rotation_degrees.x = -4.0 if not is_dashing else -14.0 # Lean forward into run
-		
-		# Arm natural counter-swing
+		torso.rotation_degrees.z = -input_dir.x * 6.0
+		torso.rotation_degrees.x = -4.0 if not is_dashing else -16.0
 		left_arm.rotation_degrees.x = -sin(run_cycle) * 18.0
 		
 		step_timer += delta
@@ -201,67 +309,156 @@ func _physics_process(delta: float) -> void:
 		torso.rotation_degrees.z = lerp(torso.rotation_degrees.z, 0.0, 10.0 * delta)
 		torso.rotation_degrees.x = lerp(torso.rotation_degrees.x, 0.0, 10.0 * delta)
 	
+	# Sniper Zoom (Hold RMB while Railgun is selected)
+	if current_weapon == 2 and Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT):
+		is_scoped = true
+		target_fov = 36.0
+	else:
+		is_scoped = false
+		target_fov = 74.0
+	camera.fov = lerp(camera.fov, target_fov, 14.0 * delta)
+	
+	# Procedural Weapon Sway interpolation
+	sway_offset = lerp(sway_offset, Vector2.ZERO, 8.0 * delta)
+	if rifle_mount:
+		rifle_mount.position.x = 0.34 + sway_offset.x
+		rifle_mount.position.y = -0.04 + sway_offset.y
+		rifle_mount.rotation_degrees.z = sway_offset.x * 40.0
+	
 	# Combat Actions
-	fire_timer -= delta
+	fire_timers[current_weapon] -= delta
 	var fire_pressed = Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT) or Input.is_action_pressed("fire")
-	if fire_pressed and fire_timer <= 0.0 and not is_overheated:
-		_shoot()
-		fire_timer = fire_rate
+	if fire_pressed and fire_timers[current_weapon] <= 0.0 and not is_overheated:
+		_execute_attack()
+		var rate = fire_rates[current_weapon]
+		if is_overclocked: rate *= 0.55
+		fire_timers[current_weapon] = rate
 		
-	# EMP Blast (Q / RMB)
-	var emp_pressed = Input.is_physical_key_pressed(KEY_Q) or Input.is_key_pressed(KEY_Q) or Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT) or Input.is_action_just_pressed("fire_emp")
+	# EMP Blast (Q key)
+	var emp_pressed = Input.is_physical_key_pressed(KEY_Q) or Input.is_key_pressed(KEY_Q) or (Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT) and current_weapon != 2)
 	if emp_pressed and emp_cooldown <= 0.0:
 		_trigger_emp()
 		
 	# Reprogramming Hacking (Hold E)
 	_process_reprogram(delta)
 	
-	# Update Camera Position & Shake
+	# Camera update
 	_update_camera(delta)
 
-func _shoot() -> void:
-	current_heat = min(max_heat, current_heat + 10.5)
+func _switch_weapon(new_idx: int) -> void:
+	current_weapon = new_idx
+	AudioManager.play_weapon_switch()
+	weapon_changed.emit(weapon_names[current_weapon])
+	
+	if gun_mesh_rifle: gun_mesh_rifle.visible = (current_weapon == 0)
+	if gun_mesh_shotgun: gun_mesh_shotgun.visible = (current_weapon == 1)
+	if gun_mesh_railgun: gun_mesh_railgun.visible = (current_weapon == 2)
+
+func _use_stim_pack() -> void:
+	stim_packs -= 1
+	health = min(max_health, health + 120.0)
+	health_changed.emit(health, max_health)
+	stim_changed.emit(stim_packs)
+	AudioManager.play_stim()
+	camera_shake = 0.2
+	
+	# Green heal flash
+	var heal_flash = OmniLight3D.new()
+	heal_flash.light_color = Color(0.1, 1.0, 0.4)
+	heal_flash.light_energy = 5.0
+	heal_flash.omni_range = 6.0
+	add_child(heal_flash)
+	heal_flash.position = Vector3(0, 1.0, 0)
+	var t = create_tween()
+	t.tween_property(heal_flash, "light_energy", 0.0, 0.35)
+	t.tween_callback(heal_flash.queue_free)
+
+func _activate_overclock() -> void:
+	is_overclocked = true
+	overclock_timer = overclock_duration
+	overclock_cooldown = overclock_max_cooldown
+	Engine.time_scale = 0.42 # Bullet-Time matrix slow-motion
+	AudioManager.play_overclock()
+	overclock_updated.emit(false, overclock_max_cooldown)
+	if overclock_particles: overclock_particles.emitting = true
+	camera_shake = 0.4
+
+func _deactivate_overclock() -> void:
+	is_overclocked = false
+	Engine.time_scale = 1.0
+	if overclock_particles: overclock_particles.emitting = false
+
+func _execute_attack() -> void:
+	var heat_cost = 9.0
+	if is_overclocked: heat_cost = 0.0 # Free fire in overclock
+	
+	current_heat = min(max_heat, current_heat + heat_cost)
 	if current_heat >= max_heat:
 		is_overheated = true
 		AudioManager.play_alert()
 	heat_updated.emit(current_heat, max_heat)
 	
+	match current_weapon:
+		0: _shoot_pulse_rifle()
+		1: _shoot_plasma_shotgun()
+		2: _shoot_ion_railgun()
+
+func _shoot_pulse_rifle() -> void:
 	AudioManager.play_shoot(1.15)
-	camera_shake = max(camera_shake, 0.16)
-	
-	# Rifle visual recoil kickback along +Z (towards player) and upward snap
-	rifle.position.z = -0.18
-	rifle.rotation_degrees.x = -6.0
+	camera_shake = max(camera_shake, 0.14)
+	_apply_weapon_recoil(-0.20, -5.0)
+	_spawn_bullet("pulse_rifle", 32.0, Vector3.ZERO)
+
+func _shoot_plasma_shotgun() -> void:
+	AudioManager.play_shotgun()
+	camera_shake = max(camera_shake, 0.35)
+	_apply_weapon_recoil(-0.14, -14.0)
+	# 8-pellet spread
+	for i in range(8):
+		var spread = Vector3(
+			randf_range(-0.08, 0.08),
+			randf_range(-0.06, 0.06),
+			randf_range(-0.08, 0.08)
+		)
+		_spawn_bullet("shotgun", 24.0, spread)
+
+func _shoot_ion_railgun() -> void:
+	AudioManager.play_railgun()
+	camera_shake = max(camera_shake, 0.5)
+	_apply_weapon_recoil(-0.10, -18.0)
+	_spawn_bullet("railgun", 185.0, Vector3.ZERO)
+
+func _apply_weapon_recoil(kick_z: float, kick_rot: float) -> void:
+	rifle_mount.position.z = kick_z
+	rifle_mount.rotation_degrees.x = kick_rot
 	var tween = create_tween()
-	tween.tween_property(rifle, "position:z", -0.26, 0.07)
-	tween.parallel().tween_property(rifle, "rotation_degrees:x", 0.0, 0.09)
+	tween.tween_property(rifle_mount, "position:z", -0.26, 0.08)
+	tween.parallel().tween_property(rifle_mount, "rotation_degrees:x", 0.0, 0.10)
 	
-	# Dynamic Muzzle Flash Light
 	if muzzle_light:
-		muzzle_light.light_energy = 7.0
+		muzzle_light.light_energy = 8.0
 		var lt = create_tween()
-		lt.tween_property(muzzle_light, "light_energy", 0.0, 0.07)
-		
-	if muzzle_smoke:
-		muzzle_smoke.restart()
-	
-	# Spawn Bullet
+		lt.tween_property(muzzle_light, "light_energy", 0.0, 0.08)
+
+func _spawn_bullet(w_type: String, dmg: float, spread: Vector3) -> void:
 	var bullet_script = load("res://scripts/bullet.gd")
 	var bullet = Area3D.new()
 	bullet.set_script(bullet_script)
 	bullet.team = "player"
-	bullet.damage = 32.0
+	bullet.weapon_type = w_type
+	bullet.damage = dmg
 	
 	var aim_target = _get_aim_target()
-	var spawn_pos = muzzle.global_position
-	var aim_dir = (aim_target - spawn_pos).normalized()
+	var spawn_pos = muzzle_marker.global_position
+	var aim_dir = (aim_target - spawn_pos).normalized() + spread
+	aim_dir = aim_dir.normalized()
 	
 	bullet.direction = aim_dir
 	get_parent().add_child(bullet)
 	bullet.global_position = spawn_pos
 
 func _get_aim_target() -> Vector3:
-	var ray_length = 200.0
+	var ray_length = 220.0
 	var from = camera.global_position
 	var forward = -camera.global_transform.basis.z
 	var to = from + forward * ray_length
@@ -279,9 +476,8 @@ func _trigger_emp() -> void:
 	emp_cooldown = emp_max_cooldown
 	emp_cooldown_updated.emit(emp_cooldown, emp_max_cooldown)
 	AudioManager.play_emp()
-	camera_shake = 0.5
+	camera_shake = 0.55
 	
-	# Expanding brilliant cyan EMP shockwave ring along ground
 	var blast_mesh = MeshInstance3D.new()
 	var torus = TorusMesh.new()
 	torus.inner_radius = 1.0
@@ -293,7 +489,7 @@ func _trigger_emp() -> void:
 	mat.albedo_color = Color(0.0, 0.95, 1.0)
 	mat.emission_enabled = true
 	mat.emission = Color(0.0, 0.95, 1.0)
-	mat.emission_energy_multiplier = 3.5
+	mat.emission_energy_multiplier = 4.0
 	blast_mesh.material_override = mat
 	
 	get_parent().add_child(blast_mesh)
@@ -304,18 +500,17 @@ func _trigger_emp() -> void:
 	tween.parallel().tween_property(mat, "albedo_color:a", 0.0, 0.45)
 	tween.tween_callback(blast_mesh.queue_free)
 	
-	# Stun all rogue enemy robots in 20m radius
 	var enemies = get_tree().get_nodes_in_group("enemies")
 	for enemy in enemies:
 		if is_instance_valid(enemy) and enemy.has_method("apply_emp_stun"):
 			var d = global_position.distance_to(enemy.global_position)
 			if d <= emp_radius:
-				enemy.apply_emp_stun(7.0)
+				enemy.apply_emp_stun(7.5)
 
 func _process_reprogram(delta: float) -> void:
 	var enemies = get_tree().get_nodes_in_group("enemies")
 	var closest_stunned: Node3D = null
-	var min_dist = 8.5 # Generous hacking radius for giant robots
+	var min_dist = 9.0
 	
 	for enemy in enemies:
 		if is_instance_valid(enemy) and enemy.get("is_stunned") == true:
@@ -357,12 +552,31 @@ func _convert_enemy_to_ally(enemy: Node3D) -> void:
 		main_node.on_bot_reprogrammed()
 
 func take_damage(amount: float, _hit_pos: Vector3 = Vector3.ZERO) -> void:
-	health = max(0.0, health - amount)
-	health_changed.emit(health, max_health)
-	camera_shake = max(camera_shake, 0.4)
+	if invuln_timer > 0.0: return # Invulnerability frames protect against multi-bullet melt
 	
+	invuln_timer = 0.35
+	shield_regen_timer = shield_regen_delay
+	camera_shake = max(camera_shake, 0.35)
+	
+	# Shield absorbs damage first
+	if shield > 0.0:
+		if shield >= amount:
+			shield -= amount
+			amount = 0.0
+		else:
+			amount -= shield
+			shield = 0.0
+			AudioManager.play_shield_break()
+		shield_changed.emit(shield, max_shield)
+		
+	if amount > 0.0:
+		health = max(0.0, health - amount)
+		health_changed.emit(health, max_health)
+		AudioManager.play_hit()
+		
 	if health <= 0.0:
 		AudioManager.play_explosion()
+		if is_overclocked: _deactivate_overclock()
 		var main_node = get_parent()
 		if main_node.has_method("game_over"):
 			main_node.game_over(false)
@@ -390,7 +604,7 @@ func _setup_camera() -> void:
 	add_child(camera_pivot)
 	
 	spring_arm = SpringArm3D.new()
-	spring_arm.spring_length = 3.8 # Optimal OTS action view
+	spring_arm.spring_length = 3.8
 	spring_arm.margin = 0.2
 	camera_pivot.add_child(spring_arm)
 	
@@ -399,7 +613,7 @@ func _setup_camera() -> void:
 	camera.fov = 74.0
 	spring_arm.add_child(camera)
 	
-	# Over Kai's right shoulder for classic OTS shooter feel
+	# Over Kai's right shoulder for classic OTS shooter perspective
 	spring_arm.position = Vector3(0.85, 0.35, 0)
 
 func _setup_collision() -> void:
@@ -412,11 +626,10 @@ func _setup_collision() -> void:
 	add_child(col)
 
 func _build_detailed_human_kai() -> void:
-	# Human Kai faces forward along -Z (No 180 flip!)
 	body_root = Node3D.new()
 	add_child(body_root)
 	
-	# Materials
+	# PBR Materials
 	var skin_mat = StandardMaterial3D.new()
 	skin_mat.albedo_color = Color(0.92, 0.76, 0.64)
 	skin_mat.roughness = 0.65
@@ -425,31 +638,43 @@ func _build_detailed_human_kai() -> void:
 	hair_mat.albedo_color = Color(0.12, 0.14, 0.18)
 	hair_mat.roughness = 0.5
 	
-	var suit_mat = StandardMaterial3D.new()
-	suit_mat.albedo_color = Color(0.16, 0.20, 0.26)
-	suit_mat.metallic = 0.6
-	suit_mat.roughness = 0.4
+	var jacket_mat = StandardMaterial3D.new()
+	jacket_mat.albedo_color = Color(0.18, 0.22, 0.28)
+	jacket_mat.metallic = 0.7
+	jacket_mat.roughness = 0.35
 	
-	var vest_mat = StandardMaterial3D.new()
-	vest_mat.albedo_color = Color(0.22, 0.27, 0.35)
-	vest_mat.metallic = 0.88
-	vest_mat.roughness = 0.28
+	var armor_mat = StandardMaterial3D.new()
+	armor_mat.albedo_color = Color(0.24, 0.28, 0.36)
+	armor_mat.metallic = 0.92
+	armor_mat.roughness = 0.25
+	
+	var cyber_chrome_mat = StandardMaterial3D.new()
+	cyber_chrome_mat.albedo_color = Color(0.75, 0.8, 0.85)
+	cyber_chrome_mat.metallic = 0.98
+	cyber_chrome_mat.roughness = 0.15
 	
 	var cyan_neon_mat = StandardMaterial3D.new()
 	var neon_col = Color(0.0, 0.95, 1.0)
 	cyan_neon_mat.albedo_color = neon_col
 	cyan_neon_mat.emission_enabled = true
 	cyan_neon_mat.emission = neon_col
-	cyan_neon_mat.emission_energy_multiplier = 2.0
+	cyan_neon_mat.emission_energy_multiplier = 2.2
+	
+	var magenta_mat = StandardMaterial3D.new()
+	var mag_col = Color(0.85, 0.15, 1.0)
+	magenta_mat.albedo_color = mag_col
+	magenta_mat.emission_enabled = true
+	magenta_mat.emission = mag_col
+	magenta_mat.emission_energy_multiplier = 2.2
 	
 	backpack_reactor_mat = StandardMaterial3D.new()
 	backpack_reactor_mat.albedo_color = neon_col
 	backpack_reactor_mat.emission_enabled = true
 	backpack_reactor_mat.emission = neon_col
-	backpack_reactor_mat.emission_energy_multiplier = 2.2
+	backpack_reactor_mat.emission_energy_multiplier = 2.5
 	
 	var pants_mat = StandardMaterial3D.new()
-	pants_mat.albedo_color = Color(0.13, 0.16, 0.20)
+	pants_mat.albedo_color = Color(0.14, 0.16, 0.20)
 	pants_mat.roughness = 0.65
 	
 	var boots_mat = StandardMaterial3D.new()
@@ -457,40 +682,49 @@ func _build_detailed_human_kai() -> void:
 	boots_mat.metallic = 0.85
 	boots_mat.roughness = 0.25
 	
-	var rifle_mat = StandardMaterial3D.new()
-	rifle_mat.albedo_color = Color(0.18, 0.20, 0.24)
-	rifle_mat.metallic = 0.96
-	rifle_mat.roughness = 0.2
+	var weapon_steel_mat = StandardMaterial3D.new()
+	weapon_steel_mat.albedo_color = Color(0.18, 0.20, 0.24)
+	weapon_steel_mat.metallic = 0.96
+	weapon_steel_mat.roughness = 0.20
 
 	# 1. Torso & Tactical Armor Vest
 	torso = Node3D.new()
 	torso.position.y = 0.95
 	body_root.add_child(torso)
 	
-	# Combat compression jacket
+	# Compression jacket
 	var chest = MeshInstance3D.new()
 	var c_box = BoxMesh.new()
 	c_box.size = Vector3(0.48, 0.52, 0.28)
 	chest.mesh = c_box
-	chest.material_override = suit_mat
+	chest.material_override = jacket_mat
 	torso.add_child(chest)
 	
-	# Front: Segmented Ceramic Ballistic Chest Plates (facing -Z forward)
-	var plate_upper = MeshInstance3D.new()
+	# Raised Jacket Collar
+	var collar = MeshInstance3D.new()
+	var col_box = BoxMesh.new()
+	col_box.size = Vector3(0.36, 0.14, 0.24)
+	collar.mesh = col_box
+	collar.position = Vector3(0, 0.28, 0.02)
+	collar.material_override = jacket_mat
+	torso.add_child(collar)
+	
+	# Front Segmented Ballistic Chest Plates
+	var plate_u = MeshInstance3D.new()
 	var pu_box = BoxMesh.new()
 	pu_box.size = Vector3(0.42, 0.22, 0.08)
-	plate_upper.mesh = pu_box
-	plate_upper.position = Vector3(0, 0.12, -0.15)
-	plate_upper.material_override = vest_mat
-	torso.add_child(plate_upper)
+	plate_u.mesh = pu_box
+	plate_u.position = Vector3(0, 0.12, -0.15)
+	plate_u.material_override = armor_mat
+	torso.add_child(plate_u)
 	
-	var plate_lower = MeshInstance3D.new()
+	var plate_l = MeshInstance3D.new()
 	var pl_box = BoxMesh.new()
 	pl_box.size = Vector3(0.38, 0.18, 0.07)
-	plate_lower.mesh = pl_box
-	plate_lower.position = Vector3(0, -0.1, -0.15)
-	plate_lower.material_override = vest_mat
-	torso.add_child(plate_lower)
+	plate_l.mesh = pl_box
+	plate_l.position = Vector3(0, -0.1, -0.15)
+	plate_l.material_override = armor_mat
+	torso.add_child(plate_l)
 	
 	# Glowing Cyan Tactical Power Line on chest
 	var led_strip = MeshInstance3D.new()
@@ -501,23 +735,23 @@ func _build_detailed_human_kai() -> void:
 	led_strip.material_override = cyan_neon_mat
 	torso.add_child(led_strip)
 	
-	# Shoulder Pauldrons / Armor Pads
+	# Shoulder Pauldrons
 	for side in [-1, 1]:
 		var pad = MeshInstance3D.new()
 		var p_box = BoxMesh.new()
 		p_box.size = Vector3(0.16, 0.18, 0.24)
 		pad.mesh = p_box
 		pad.position = Vector3(side * 0.28, 0.22, 0)
-		pad.material_override = vest_mat
+		pad.material_override = armor_mat
 		torso.add_child(pad)
 		
-	# Back (+Z): High-Tech EMP Reactor Backpack (Facing Third-Person Camera!)
+	# Back (+Z): High-Tech EMP Reactor Backpack
 	var pack = MeshInstance3D.new()
 	var pack_box = BoxMesh.new()
 	pack_box.size = Vector3(0.34, 0.42, 0.14)
 	pack.mesh = pack_box
 	pack.position = Vector3(0, 0.06, 0.18)
-	pack.material_override = vest_mat
+	pack.material_override = armor_mat
 	torso.add_child(pack)
 	
 	# Glowing EMP Reactor Core Cylinder
@@ -532,14 +766,14 @@ func _build_detailed_human_kai() -> void:
 	reactor_core.material_override = backpack_reactor_mat
 	torso.add_child(reactor_core)
 	
-	# Backpack radiator cooling fins
+	# Cooling fins
 	for y_off in [-0.08, 0.0, 0.08]:
 		var fin = MeshInstance3D.new()
 		var f_box = BoxMesh.new()
 		f_box.size = Vector3(0.26, 0.02, 0.06)
 		fin.mesh = f_box
 		fin.position = Vector3(0, y_off, 0.25)
-		fin.material_override = rifle_mat
+		fin.material_override = weapon_steel_mat
 		torso.add_child(fin)
 
 	# 2. Head, Cyber Visor & Layered Hair
@@ -547,7 +781,6 @@ func _build_detailed_human_kai() -> void:
 	head.position = Vector3(0, 0.42, 0)
 	torso.add_child(head)
 	
-	# Human Face & Head Base (facing -Z)
 	var face = MeshInstance3D.new()
 	var f_sph = SphereMesh.new()
 	f_sph.radius = 0.14
@@ -557,7 +790,7 @@ func _build_detailed_human_kai() -> void:
 	face.material_override = skin_mat
 	head.add_child(face)
 	
-	# Hair: Fully covers crown and back (+Z) of head
+	# Hair: Covering crown and back (+Z) of head
 	var hair_back = MeshInstance3D.new()
 	var hb_box = BoxMesh.new()
 	hb_box.size = Vector3(0.34, 0.26, 0.22)
@@ -574,7 +807,7 @@ func _build_detailed_human_kai() -> void:
 	hair_top.material_override = hair_mat
 	head.add_child(hair_top)
 	
-	# Stylish anime swept hair fringe at forehead (-Z)
+	# Styled bangs fringe at forehead (-Z)
 	var hair_fringe = MeshInstance3D.new()
 	var hf_box = BoxMesh.new()
 	hf_box.size = Vector3(0.30, 0.12, 0.14)
@@ -584,7 +817,7 @@ func _build_detailed_human_kai() -> void:
 	hair_fringe.material_override = hair_mat
 	head.add_child(hair_fringe)
 	
-	# Glowing Tactical Cyber Visor (wrapped around temples facing -Z)
+	# Glowing Tactical Cyber Visor
 	var visor = MeshInstance3D.new()
 	var v_box = BoxMesh.new()
 	v_box.size = Vector3(0.28, 0.06, 0.14)
@@ -593,7 +826,7 @@ func _build_detailed_human_kai() -> void:
 	visor.material_override = cyan_neon_mat
 	head.add_child(visor)
 	
-	# Comms Headset with Boom Mic on left ear
+	# Comms Headset with Boom Mic
 	var headset = MeshInstance3D.new()
 	var hs_box = BoxMesh.new()
 	hs_box.size = Vector3(0.06, 0.10, 0.10)
@@ -602,8 +835,8 @@ func _build_detailed_human_kai() -> void:
 	headset.material_override = boots_mat
 	head.add_child(headset)
 
-	# 3. Arms & Two-Handed Pulse Rifle Stance
-	# Left Arm: Cybernetic Gauntlet angled across to support rifle foregrip
+	# 3. Arms & Dynamic Weapon Grip
+	# Left Arm: Chrome Cybernetic Prosthetic Hacking Arm
 	left_arm = Node3D.new()
 	left_arm.position = Vector3(-0.24, 0.12, 0)
 	torso.add_child(left_arm)
@@ -617,7 +850,7 @@ func _build_detailed_human_kai() -> void:
 	l_upper.rotation_degrees.z = -30
 	l_upper.rotation_degrees.x = 40
 	l_upper.position = Vector3(0.10, -0.14, -0.12)
-	l_upper.material_override = suit_mat
+	l_upper.material_override = cyber_chrome_mat
 	left_arm.add_child(l_upper)
 	
 	var gauntlet = MeshInstance3D.new()
@@ -628,7 +861,7 @@ func _build_detailed_human_kai() -> void:
 	gauntlet.material_override = cyan_neon_mat
 	left_arm.add_child(gauntlet)
 	
-	# Right Arm: Aiming rifle forward
+	# Right Arm: Armed with Weapon
 	right_arm = Node3D.new()
 	right_arm.position = Vector3(0.30, 0.12, 0)
 	torso.add_child(right_arm)
@@ -638,41 +871,42 @@ func _build_detailed_human_kai() -> void:
 	r_upper.rotation_degrees.z = 10
 	r_upper.rotation_degrees.x = 20
 	r_upper.position = Vector3(0.02, -0.14, -0.10)
-	r_upper.material_override = suit_mat
+	r_upper.material_override = jacket_mat
 	right_arm.add_child(r_upper)
 	
-	# 4. Heavy Bullpup EMP Pulse Rifle (Prominently mounted on right side of screen)
-	rifle = Node3D.new()
-	rifle.position = Vector3(0.34, -0.04, -0.26)
-	torso.add_child(rifle)
+	# 4. Modular Weapon Mount (Transforms with weapon selection!)
+	rifle_mount = Node3D.new()
+	rifle_mount.position = Vector3(0.34, -0.04, -0.26)
+	torso.add_child(rifle_mount)
 	
-	var r_body = MeshInstance3D.new()
+	# --- Weapon 0: Vanguard Pulse Assault Rifle ---
+	gun_mesh_rifle = Node3D.new()
+	rifle_mount.add_child(gun_mesh_rifle)
+	
+	var rb = MeshInstance3D.new()
 	var rb_box = BoxMesh.new()
 	rb_box.size = Vector3(0.10, 0.18, 0.65)
-	r_body.mesh = rb_box
-	r_body.position = Vector3(0, 0, -0.12)
-	r_body.material_override = rifle_mat
-	rifle.add_child(r_body)
+	rb.mesh = rb_box
+	rb.position = Vector3(0, 0, -0.12)
+	rb.material_override = weapon_steel_mat
+	gun_mesh_rifle.add_child(rb)
 	
-	# Glowing Cyan Plasma Energy Cell (ammo battery)
 	var r_cell = MeshInstance3D.new()
 	var rc_box = BoxMesh.new()
 	rc_box.size = Vector3(0.06, 0.14, 0.18)
 	r_cell.mesh = rc_box
 	r_cell.position = Vector3(0, -0.04, 0.05)
 	r_cell.material_override = cyan_neon_mat
-	rifle.add_child(r_cell)
+	gun_mesh_rifle.add_child(r_cell)
 	
-	# Holographic Reflex Sight with glowing reticle
 	var sight = MeshInstance3D.new()
 	var s_box = BoxMesh.new()
 	s_box.size = Vector3(0.06, 0.09, 0.18)
 	sight.mesh = s_box
 	sight.position = Vector3(0, 0.13, -0.18)
 	sight.material_override = cyan_neon_mat
-	rifle.add_child(sight)
+	gun_mesh_rifle.add_child(sight)
 	
-	# Heavy Fluted Barrel extending forward (-Z)
 	var barrel = MeshInstance3D.new()
 	var b_cyl = CylinderMesh.new()
 	b_cyl.top_radius = 0.035
@@ -681,39 +915,95 @@ func _build_detailed_human_kai() -> void:
 	barrel.mesh = b_cyl
 	barrel.rotation_degrees.x = 90
 	barrel.position = Vector3(0, 0.02, -0.52)
-	barrel.material_override = rifle_mat
-	rifle.add_child(barrel)
+	barrel.material_override = weapon_steel_mat
+	gun_mesh_rifle.add_child(barrel)
 	
-	# Underslung EMP Canister Tube
-	var emp_canister = MeshInstance3D.new()
-	var ec_cyl = CylinderMesh.new()
-	ec_cyl.top_radius = 0.042
-	ec_cyl.bottom_radius = 0.042
-	ec_cyl.height = 0.35
-	emp_canister.mesh = ec_cyl
-	emp_canister.rotation_degrees.x = 90
-	emp_canister.position = Vector3(0, -0.08, -0.38)
-	emp_canister.material_override = cyan_neon_mat
-	rifle.add_child(emp_canister)
+	# --- Weapon 1: Scatter Plasma Shotgun ---
+	gun_mesh_shotgun = Node3D.new()
+	gun_mesh_shotgun.visible = false
+	rifle_mount.add_child(gun_mesh_shotgun)
 	
-	muzzle = Marker3D.new()
-	muzzle.position = Vector3(0, 0.02, -0.84)
-	rifle.add_child(muzzle)
+	var sb = MeshInstance3D.new()
+	var sb_box = BoxMesh.new()
+	sb_box.size = Vector3(0.14, 0.20, 0.55)
+	sb.mesh = sb_box
+	sb.position = Vector3(0, 0, -0.10)
+	sb.material_override = weapon_steel_mat
+	gun_mesh_shotgun.add_child(sb)
 	
-	# Muzzle Flash Dynamic Light
+	for sx in [-0.04, 0.04]:
+		var s_bar = MeshInstance3D.new()
+		var s_cyl = CylinderMesh.new()
+		s_cyl.top_radius = 0.045
+		s_cyl.bottom_radius = 0.045
+		s_cyl.height = 0.48
+		s_bar.mesh = s_cyl
+		s_bar.rotation_degrees.x = 90
+		s_bar.position = Vector3(sx, 0.02, -0.45)
+		s_bar.material_override = weapon_steel_mat
+		gun_mesh_shotgun.add_child(s_bar)
+		
+	var s_mag = MeshInstance3D.new()
+	var sm_box = BoxMesh.new()
+	sm_box.size = Vector3(0.10, 0.12, 0.20)
+	s_mag.mesh = sm_box
+	s_mag.position = Vector3(0, -0.06, 0.02)
+	s_mag.material_override = magenta_mat
+	gun_mesh_shotgun.add_child(s_mag)
+	
+	# --- Weapon 2: Hyper Ion Railgun ---
+	gun_mesh_railgun = Node3D.new()
+	gun_mesh_railgun.visible = false
+	rifle_mount.add_child(gun_mesh_railgun)
+	
+	var rlg_b = MeshInstance3D.new()
+	var rlg_box = BoxMesh.new()
+	rlg_box.size = Vector3(0.12, 0.18, 0.75)
+	rlg_b.mesh = rlg_box
+	rlg_b.position = Vector3(0, 0, -0.14)
+	rlg_b.material_override = weapon_steel_mat
+	gun_mesh_railgun.add_child(rlg_b)
+	
+	# Dual magnetic accelerator rails
+	for side in [-0.04, 0.04]:
+		var rail = MeshInstance3D.new()
+		var rail_box = BoxMesh.new()
+		rail_box.size = Vector3(0.025, 0.05, 0.75)
+		rail.mesh = rail_box
+		rail.position = Vector3(side, 0.02, -0.65)
+		rail.material_override = cyan_neon_mat
+		gun_mesh_railgun.add_child(rail)
+		
+	# High-magnification sniper scope
+	var scope = MeshInstance3D.new()
+	var sc_cyl = CylinderMesh.new()
+	sc_cyl.top_radius = 0.04
+	sc_cyl.bottom_radius = 0.04
+	sc_cyl.height = 0.35
+	scope.mesh = sc_cyl
+	scope.rotation_degrees.x = 90
+	scope.position = Vector3(0, 0.14, -0.22)
+	scope.material_override = cyber_chrome_mat
+	gun_mesh_railgun.add_child(scope)
+	
+	# Shared Muzzle Marker & Flash
+	muzzle_marker = Marker3D.new()
+	muzzle_marker.position = Vector3(0, 0.02, -0.85)
+	rifle_mount.add_child(muzzle_marker)
+	
 	muzzle_light = OmniLight3D.new()
 	muzzle_light.light_color = Color(0.1, 0.95, 1.0)
 	muzzle_light.light_energy = 0.0
 	muzzle_light.omni_range = 9.0
-	muzzle.add_child(muzzle_light)
+	muzzle_marker.add_child(muzzle_light)
 
-	# 5. Articulated Legs & Combat Boots (Facing -Z Forward)
-	var leg_data_left = _create_human_leg(Vector3(-0.16, 0.0, 0), pants_mat, boots_mat, vest_mat)
+	# 5. Articulated Legs & Combat Boots
+	var leg_data_left = _create_human_leg(Vector3(-0.16, 0.0, 0), pants_mat, boots_mat, armor_mat, cyan_neon_mat)
 	left_leg = leg_data_left[0]
 	left_shin = leg_data_left[1]
 	body_root.add_child(left_leg)
 	
-	var leg_data_right = _create_human_leg(Vector3(0.16, 0.0, 0), pants_mat, boots_mat, vest_mat)
+	var leg_data_right = _create_human_leg(Vector3(0.16, 0.0, 0), pants_mat, boots_mat, armor_mat, cyan_neon_mat)
 	right_leg = leg_data_right[0]
 	right_shin = leg_data_right[1]
 	body_root.add_child(right_leg)
@@ -721,17 +1011,47 @@ func _build_detailed_human_kai() -> void:
 	# Dash Boot Thruster Spark Particles
 	dash_particles = CPUParticles3D.new()
 	dash_particles.emitting = false
-	dash_particles.amount = 22
+	dash_particles.amount = 26
 	dash_particles.lifetime = 0.28
 	dash_particles.spread = 120.0
 	dash_particles.initial_velocity_min = 4.0
-	dash_particles.initial_velocity_max = 8.0
+	dash_particles.initial_velocity_max = 9.0
 	dash_particles.gravity = Vector3(0, 2.5, 0)
 	dash_particles.color = Color(0.0, 0.95, 1.0)
 	dash_particles.position = Vector3(0, 0.1, 0.15)
 	body_root.add_child(dash_particles)
+	
+	# Overclock Lightning Particle Aura
+	overclock_particles = CPUParticles3D.new()
+	overclock_particles.emitting = false
+	overclock_particles.amount = 32
+	overclock_particles.lifetime = 0.4
+	overclock_particles.spread = 180.0
+	overclock_particles.initial_velocity_min = 2.0
+	overclock_particles.initial_velocity_max = 5.0
+	overclock_particles.gravity = Vector3(0, 1.0, 0)
+	overclock_particles.color = Color(0.2, 0.9, 1.0)
+	overclock_particles.position = Vector3(0, 0.9, 0)
+	body_root.add_child(overclock_particles)
+	
+	# Shield Shimmer Mesh (Flashes when shield absorbs hits)
+	shield_shimmer = MeshInstance3D.new()
+	var s_capsule = CapsuleMesh.new()
+	s_capsule.radius = 0.65
+	s_capsule.height = 2.1
+	shield_shimmer.mesh = s_capsule
+	shield_shimmer.position.y = 0.95
+	var s_mat = StandardMaterial3D.new()
+	s_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	s_mat.albedo_color = Color(0.0, 0.8, 1.0, 0.35)
+	s_mat.emission_enabled = true
+	s_mat.emission = Color(0.0, 0.8, 1.0)
+	s_mat.emission_energy_multiplier = 2.0
+	shield_shimmer.material_override = s_mat
+	shield_shimmer.visible = false
+	body_root.add_child(shield_shimmer)
 
-func _create_human_leg(pos: Vector3, pants_mat: Material, boots_mat: Material, armor_mat: Material) -> Array:
+func _create_human_leg(pos: Vector3, pants_mat: Material, boots_mat: Material, armor_mat: Material, neon_mat: Material) -> Array:
 	var thigh_root = Node3D.new()
 	thigh_root.position = pos + Vector3(0, 0.92, 0)
 	
@@ -751,7 +1071,7 @@ func _create_human_leg(pos: Vector3, pants_mat: Material, boots_mat: Material, a
 	shin_root.position = Vector3(0, -0.44, 0)
 	thigh_root.add_child(shin_root)
 	
-	# Knee Guard Armor Pad (facing -Z forward)
+	# Knee Guard Armor Pad
 	var knee = MeshInstance3D.new()
 	var k_box = BoxMesh.new()
 	k_box.size = Vector3(0.14, 0.12, 0.08)
@@ -771,7 +1091,7 @@ func _create_human_leg(pos: Vector3, pants_mat: Material, boots_mat: Material, a
 	shin.material_override = pants_mat
 	shin_root.add_child(shin)
 	
-	# Armored Combat Boot (pointing -Z forward)
+	# Armored Combat Boot
 	var boot = MeshInstance3D.new()
 	var b_box = BoxMesh.new()
 	b_box.size = Vector3(0.15, 0.14, 0.28)
@@ -779,5 +1099,14 @@ func _create_human_leg(pos: Vector3, pants_mat: Material, boots_mat: Material, a
 	boot.position = Vector3(0, -0.42, -0.05)
 	boot.material_override = boots_mat
 	shin_root.add_child(boot)
+	
+	# Glowing Cyan Anti-Grav Sole Thruster Strip
+	var thruster_sole = MeshInstance3D.new()
+	var ts_box = BoxMesh.new()
+	ts_box.size = Vector3(0.12, 0.02, 0.24)
+	thruster_sole.mesh = ts_box
+	thruster_sole.position = Vector3(0, -0.49, -0.05)
+	thruster_sole.material_override = neon_mat
+	shin_root.add_child(thruster_sole)
 	
 	return [thigh_root, shin_root]

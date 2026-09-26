@@ -3,18 +3,20 @@ extends CharacterBody3D
 # Giant Rogue War Machine AI (Godot 4.7)
 # Inspired by ED-209, Armored Core, and Titanfall Colossi.
 # Stands 6.8m to 11.0m tall with rotating Gatling cannons, hydraulic reverse-joint legs,
-# ground-shaking footstep stomps, red targeting searchlight, and massive multi-stage explosions.
+# ground-shaking footstep stomps, red targeting searchlight, and telegraphed attacks.
 
 @export var bot_type: String = "grunt" # "grunt", "bruiser", "boss"
 
-var max_health: float = 350.0
-var health: float = 350.0
+var max_health: float = 380.0
+var health: float = 380.0
 var speed: float = 4.2
-var fire_rate: float = 0.14 # Rapid-fire Gatling salvos
+var fire_rate: float = 0.16
 var burst_count: int = 0
-var max_burst: int = 8
+var max_burst: int = 7
 var burst_pause: float = 0.0
-var damage_per_shot: float = 12.0
+var is_spinning_up: bool = false
+var spinup_timer: float = 0.0
+var damage_per_shot: float = 10.0 # Balanced with Kai's 200 Shield + 300 HP
 var attack_range: float = 42.0
 var preferred_dist: float = 18.0
 var team: String = "enemy"
@@ -24,14 +26,15 @@ var is_stunned: bool = false
 var stun_timer: float = 0.0
 var target: Node3D = null
 var walk_cycle: float = 0.0
-var step_interval: float = 0.7
+var step_interval: float = 0.72
 var step_timer: float = 0.0
-
 
 # Node References
 var torso: Node3D
 var left_leg: Node3D
 var right_leg: Node3D
+var left_piston: Node3D
+var right_piston: Node3D
 var left_muzzle: Marker3D
 var right_muzzle: Marker3D
 var left_muzzle_light: OmniLight3D
@@ -56,21 +59,21 @@ func _configure_stats() -> void:
 	match bot_type:
 		"grunt":
 			# Giant 6.8m Goliath Enforcer Titan
-			max_health = 350.0
+			max_health = 380.0
 			speed = 4.4
-			damage_per_shot = 10.0
+			damage_per_shot = 9.0
 			scale = Vector3(3.4, 3.4, 3.4)
 		"bruiser":
 			# Colossal 8.0m Heavy Siege Titan
-			max_health = 520.0
+			max_health = 560.0
 			speed = 3.8
-			damage_per_shot = 16.0
+			damage_per_shot = 14.0
 			scale = Vector3(4.0, 4.0, 4.0)
 		"boss":
 			# Monolithic 11.0m Titan Colossus OMEGA-ZERO
-			max_health = 1200.0
+			max_health = 1300.0
 			speed = 4.0
-			damage_per_shot = 24.0
+			damage_per_shot = 20.0
 			scale = Vector3(5.5, 5.5, 5.5)
 	health = max_health
 
@@ -90,10 +93,9 @@ func _physics_process(delta: float) -> void:
 		if stun_sparks: stun_sparks.emitting = true
 		if prompt_label: prompt_label.visible = true
 		
-		# Visor alarm flicker
 		if visor_mat:
 			var flicker = sin(Time.get_ticks_msec() * 0.04) > 0.0
-			visor_mat.emission_energy_multiplier = 2.8 if flicker else 0.3
+			visor_mat.emission_energy_multiplier = 3.0 if flicker else 0.3
 			
 		if stun_timer <= 0.0:
 			_recover_from_stun()
@@ -111,7 +113,7 @@ func _physics_process(delta: float) -> void:
 		# Aim smoothly at target
 		if diff.length() > 0.1:
 			var target_rot = atan2(diff.x, diff.z)
-			rotation.y = lerp_angle(rotation.y, target_rot, 3.2 * delta)
+			rotation.y = lerp_angle(rotation.y, target_rot, 3.0 * delta)
 			
 		var move_dir = Vector3.ZERO
 		if dist > preferred_dist + 2.5:
@@ -119,9 +121,8 @@ func _physics_process(delta: float) -> void:
 		elif dist < preferred_dist - 2.5:
 			move_dir = -diff.normalized()
 		else:
-			# Strafe around Kai
 			var strafe = Vector3(-diff.z, 0, diff.x).normalized()
-			move_dir = strafe * (1.0 if sin(Time.get_ticks_msec() * 0.0006) > 0 else -1.0) * 0.4
+			move_dir = strafe * (1.0 if sin(Time.get_ticks_msec() * 0.0006) > 0 else -1.0) * 0.35
 			
 		var target_vel = move_dir * speed
 		velocity.x = lerp(velocity.x, target_vel.x, 5.0 * delta)
@@ -130,8 +131,14 @@ func _physics_process(delta: float) -> void:
 		# Heavy Hydraulic Walk Cycle
 		if move_dir.length() > 0.1:
 			walk_cycle += delta * 7.5
-			left_leg.rotation_degrees.x = sin(walk_cycle) * 24.0
-			right_leg.rotation_degrees.x = -sin(walk_cycle) * 24.0
+			var l_rot = sin(walk_cycle) * 24.0
+			var r_rot = -sin(walk_cycle) * 24.0
+			left_leg.rotation_degrees.x = l_rot
+			right_leg.rotation_degrees.x = r_rot
+			
+			# Piston extension/compression
+			if left_piston: left_piston.position.y = -0.65 + sin(walk_cycle) * 0.08
+			if right_piston: right_piston.position.y = -0.65 - sin(walk_cycle) * 0.08
 			torso.position.y = 1.35 + abs(sin(walk_cycle * 2.0)) * 0.10
 			
 			step_timer += delta
@@ -144,41 +151,103 @@ func _physics_process(delta: float) -> void:
 			right_leg.rotation_degrees.x = lerp(right_leg.rotation_degrees.x, 0.0, 6.0 * delta)
 			torso.position.y = lerp(torso.position.y, 1.35, 6.0 * delta)
 			
-		# Gatling Gun Combat Firing
+		# Telegraphed Gatling Firing Cycle
 		if burst_pause > 0.0:
 			burst_pause -= delta
 		elif dist <= attack_range:
-			_process_burst_firing(delta)
+			_process_telegraphed_attack(delta)
 	else:
 		velocity.x = lerp(velocity.x, 0.0, 4.0 * delta)
 		velocity.z = lerp(velocity.z, 0.0, 4.0 * delta)
 		
 	move_and_slide()
 
+func _process_telegraphed_attack(delta: float) -> void:
+	# 0.45s Spin-Up Telegraph: Barrels spin, eye brightens before bullets start flying
+	if not is_spinning_up and burst_count == 0:
+		is_spinning_up = true
+		spinup_timer = 0.45
+		if visor_mat: visor_mat.emission_energy_multiplier = 3.0
+		
+	if is_spinning_up:
+		spinup_timer -= delta
+		if left_gatling_barrels: left_gatling_barrels.rotation_degrees.z += 800.0 * delta
+		if right_gatling_barrels: right_gatling_barrels.rotation_degrees.z += 800.0 * delta
+		if spinup_timer <= 0.0:
+			is_spinning_up = false
+		return
+		
+	# Active Burst Firing
+	if left_gatling_barrels: left_gatling_barrels.rotation_degrees.z += 1400.0 * delta
+	if right_gatling_barrels: right_gatling_barrels.rotation_degrees.z += 1400.0 * delta
+	
+	burst_count += 1
+	AudioManager.play_shoot(0.70 if bot_type != "boss" else 0.50)
+	
+	var bullet_script = load("res://scripts/bullet.gd")
+	var bullet = Area3D.new()
+	bullet.set_script(bullet_script)
+	bullet.team = "enemy"
+	bullet.weapon_type = "enemy"
+	bullet.damage = damage_per_shot
+	
+	var is_left = (burst_count % 2 == 0)
+	var muzzle = left_muzzle if is_left else right_muzzle
+	var muzzle_light = left_muzzle_light if is_left else right_muzzle_light
+	var spawn_pos = muzzle.global_position
+	
+	if muzzle_light:
+		muzzle_light.light_energy = 5.0
+		var lt = create_tween()
+		lt.tween_property(muzzle_light, "light_energy", 0.0, 0.08)
+	
+	# Slight spread allows Kai to dodge and sprint for cover
+	var aim_dir = (target.global_position + Vector3(0, 1.2, 0) - spawn_pos).normalized()
+	aim_dir += Vector3(randf_range(-0.06, 0.06), randf_range(-0.04, 0.04), randf_range(-0.06, 0.06))
+	aim_dir = aim_dir.normalized()
+	
+	bullet.direction = aim_dir
+	get_parent().add_child(bullet)
+	bullet.global_position = spawn_pos
+	
+	# Boss extra rocket volley
+	if bot_type == "boss" and randf() > 0.45:
+		var b2 = Area3D.new()
+		b2.set_script(bullet_script)
+		b2.team = "enemy"
+		b2.weapon_type = "enemy"
+		b2.damage = damage_per_shot * 1.5
+		b2.direction = (aim_dir + Vector3(randf_range(-0.08, 0.08), 0.06, 0)).normalized()
+		get_parent().add_child(b2)
+		b2.global_position = right_muzzle.global_position
+		
+	if burst_count >= max_burst:
+		burst_count = 0
+		burst_pause = randf_range(1.8, 2.6) # Tactical window for Kai to counter-attack!
+		if visor_mat: visor_mat.emission_energy_multiplier = 1.4
+
 func _spawn_footstep_shockwave() -> void:
-	# Heavy footstep camera shake for Kai
 	var player = get_tree().get_first_node_in_group("player")
 	if is_instance_valid(player):
 		var p_dist = global_position.distance_to(player.global_position)
-		if p_dist < 28.0 and player.get("camera_shake") != null:
-			player.camera_shake = max(player.camera_shake, 0.22 * (1.0 - p_dist / 28.0))
+		if p_dist < 30.0 and player.get("camera_shake") != null:
+			player.camera_shake = max(player.camera_shake, 0.24 * (1.0 - p_dist / 30.0))
 			
-	# Small dust ring at foot
 	var dust = CPUParticles3D.new()
 	dust.emitting = true
 	dust.one_shot = true
 	dust.explosiveness = 1.0
-	dust.amount = 14
-	dust.lifetime = 0.5
+	dust.amount = 16
+	dust.lifetime = 0.55
 	dust.direction = Vector3.UP
 	dust.spread = 90.0
-	dust.initial_velocity_min = 2.0
-	dust.initial_velocity_max = 5.0
+	dust.initial_velocity_min = 2.5
+	dust.initial_velocity_max = 6.0
 	dust.gravity = Vector3(0, -6.0, 0)
-	dust.color = Color(0.3, 0.35, 0.4, 0.6)
+	dust.color = Color(0.35, 0.4, 0.45, 0.6)
 	get_parent().add_child(dust)
 	dust.global_position = global_position + Vector3(0, 0.1, 0)
-	get_tree().create_timer(0.6).timeout.connect(dust.queue_free)
+	get_tree().create_timer(0.65).timeout.connect(dust.queue_free)
 
 func _find_target() -> void:
 	var potential_targets = []
@@ -200,53 +269,6 @@ func _find_target() -> void:
 			closest = t
 	target = closest
 
-func _process_burst_firing(delta: float) -> void:
-	# Rapid Gatling Barrel Spin
-	if left_gatling_barrels: left_gatling_barrels.rotation_degrees.z += 1200.0 * delta
-	if right_gatling_barrels: right_gatling_barrels.rotation_degrees.z += 1200.0 * delta
-	
-	burst_count += 1
-	AudioManager.play_shoot(0.72 if bot_type != "boss" else 0.52)
-	
-	# Spawn Heavy Projectile
-	var bullet_script = load("res://scripts/bullet.gd")
-	var bullet = Area3D.new()
-	bullet.set_script(bullet_script)
-	bullet.team = "enemy"
-	bullet.damage = damage_per_shot
-	
-	var is_left = (burst_count % 2 == 0)
-	var muzzle = left_muzzle if is_left else right_muzzle
-	var muzzle_light = left_muzzle_light if is_left else right_muzzle_light
-	var spawn_pos = muzzle.global_position
-	
-	if muzzle_light:
-		muzzle_light.light_energy = 5.0
-		var lt = create_tween()
-		lt.tween_property(muzzle_light, "light_energy", 0.0, 0.08)
-	
-	var aim_dir = (target.global_position + Vector3(0, 1.2, 0) - spawn_pos).normalized()
-	aim_dir += Vector3(randf_range(-0.05, 0.05), randf_range(-0.03, 0.03), randf_range(-0.05, 0.05))
-	aim_dir = aim_dir.normalized()
-	
-	bullet.direction = aim_dir
-	get_parent().add_child(bullet)
-	bullet.global_position = spawn_pos
-	
-	# Boss extra rocket volley
-	if bot_type == "boss" and randf() > 0.4:
-		var b2 = Area3D.new()
-		b2.set_script(bullet_script)
-		b2.team = "enemy"
-		b2.damage = damage_per_shot * 1.4
-		b2.direction = (aim_dir + Vector3(randf_range(-0.08, 0.08), 0.06, 0)).normalized()
-		get_parent().add_child(b2)
-		b2.global_position = right_muzzle.global_position
-		
-	if burst_count >= max_burst:
-		burst_count = 0
-		burst_pause = randf_range(1.6, 2.4) # Tactical pause between bursts
-
 func apply_emp_stun(duration: float) -> void:
 	if bot_type == "boss":
 		duration *= 0.55
@@ -266,14 +288,13 @@ func _recover_from_stun() -> void:
 
 func take_damage(amount: float, _hit_pos: Vector3 = Vector3.ZERO) -> void:
 	if is_stunned:
-		amount *= 1.4 # Critical vulnerability when reactor is EMP-stunned
+		amount *= 1.45
 		
 	health = max(0.0, health - amount)
 	_update_health_display()
 	
-	# Armor hit flash
 	if visor_mat:
-		visor_mat.emission_energy_multiplier = 4.0
+		visor_mat.emission_energy_multiplier = 4.2
 		var t = create_tween()
 		t.tween_property(visor_mat, "emission_energy_multiplier", 1.4, 0.08)
 		
@@ -335,7 +356,7 @@ func _spawn_massive_cinematic_explosion() -> void:
 	get_parent().add_child(debris)
 	debris.global_position = global_position + Vector3(0, 3.0, 0)
 	
-	# 3. Towering Dark Industrial Smoke Mushroom Plume
+	# 3. Rising Dark Industrial Smoke Mushroom Plume
 	var smoke = CPUParticles3D.new()
 	smoke.emitting = true
 	smoke.one_shot = true
@@ -350,7 +371,7 @@ func _spawn_massive_cinematic_explosion() -> void:
 	get_parent().add_child(smoke)
 	smoke.global_position = global_position + Vector3(0, 3.0, 0)
 	
-	# 4. Shockwave Blast Ring expanding across concrete
+	# 4. Shockwave Blast Ring along ground
 	var ring = MeshInstance3D.new()
 	var torus = TorusMesh.new()
 	torus.inner_radius = 1.0
@@ -371,7 +392,6 @@ func _spawn_massive_cinematic_explosion() -> void:
 	rt.parallel().tween_property(r_mat, "albedo_color:a", 0.0, 0.55)
 	rt.tween_callback(ring.queue_free)
 	
-	# Heavy camera shake for nearby player
 	var player = get_tree().get_first_node_in_group("player")
 	if is_instance_valid(player) and player.get("camera_shake") != null:
 		player.camera_shake = 0.8
@@ -395,15 +415,12 @@ func _build_giant_mech_model() -> void:
 	
 	# PBR Armor Materials
 	var armor_mat = StandardMaterial3D.new()
-	armor_mat.albedo_texture = load("res://assets/armor_albedo.png")
-	armor_mat.normal_enabled = true
-	armor_mat.normal_texture = load("res://assets/armor_normal.png")
-	armor_mat.albedo_color = Color(0.85, 0.42, 0.42) if bot_type != "boss" else Color(0.20, 0.15, 0.18)
+	armor_mat.albedo_texture = load("res://assets/mech_armor_camo.png")
 	armor_mat.metallic = 0.94
-	armor_mat.roughness = 0.28
+	armor_mat.roughness = 0.26
 	
 	var steel_mat = StandardMaterial3D.new()
-	steel_mat.albedo_color = Color(0.20, 0.22, 0.26)
+	steel_mat.albedo_color = Color(0.18, 0.20, 0.24)
 	steel_mat.metallic = 0.96
 	steel_mat.roughness = 0.20
 	
@@ -423,7 +440,7 @@ func _build_giant_mech_model() -> void:
 	visor_mat.albedo_color = red
 	visor_mat.emission_enabled = true
 	visor_mat.emission = red
-	visor_mat.emission_energy_multiplier = 1.5
+	visor_mat.emission_energy_multiplier = 1.6
 	
 	# Glowing Orange Nuclear Reactor Core
 	reactor_mat = StandardMaterial3D.new()
@@ -431,9 +448,9 @@ func _build_giant_mech_model() -> void:
 	reactor_mat.albedo_color = orange
 	reactor_mat.emission_enabled = true
 	reactor_mat.emission = orange
-	reactor_mat.emission_energy_multiplier = 2.5
+	reactor_mat.emission_energy_multiplier = 2.8
 	
-	# 1. Main Armored Pod Cockpit (ED-209 style)
+	# 1. Main Armored Pod Cockpit
 	var hull = MeshInstance3D.new()
 	var hull_box = BoxMesh.new()
 	hull_box.size = Vector3(1.6, 1.1, 1.4)
@@ -459,14 +476,14 @@ func _build_giant_mech_model() -> void:
 	visor_mesh.material_override = visor_mat
 	torso.add_child(visor_mesh)
 	
-	# Red Targeting Searchlight (sweeps arena floor!)
+	# Red Volumetric Targeting Searchlight (Angled downward onto concrete)
 	searchlight = SpotLight3D.new()
 	searchlight.light_color = red
-	searchlight.light_energy = 4.5
-	searchlight.spot_range = 35.0
-	searchlight.spot_angle = 24.0
-	searchlight.position = Vector3(0, 0.18, 0.8)
-	searchlight.rotation_degrees.x = -15.0
+	searchlight.light_energy = 8.0
+	searchlight.spot_range = 45.0
+	searchlight.spot_angle = 32.0
+	searchlight.position = Vector3(0, 0.25, 0.9)
+	searchlight.rotation_degrees.x = -24.0
 	torso.add_child(searchlight)
 	
 	# Rear Reactor Core Cylinder
@@ -491,7 +508,7 @@ func _build_giant_mech_model() -> void:
 		hz.material_override = hazard_mat
 		torso.add_child(hz)
 	
-	# Exhaust Stacks
+	# Exhaust Stacks with Continuous Dark Smoke Particles
 	for x_off in [-0.5, 0.5]:
 		var stack = MeshInstance3D.new()
 		var s_cyl = CylinderMesh.new()
@@ -503,8 +520,20 @@ func _build_giant_mech_model() -> void:
 		stack.material_override = steel_mat
 		torso.add_child(stack)
 		
-	# 2. Dual Arm Sponsons & Rotating Gatling Barrels
-	# Left Sponson: 6-Barrel Heavy Rotary Gatling
+		var smoke = CPUParticles3D.new()
+		smoke.emitting = true
+		smoke.amount = 14
+		smoke.lifetime = 1.0
+		smoke.spread = 25.0
+		smoke.direction = Vector3.UP
+		smoke.initial_velocity_min = 2.0
+		smoke.initial_velocity_max = 4.5
+		smoke.gravity = Vector3(0, 1.0, 0)
+		smoke.color = Color(0.15, 0.16, 0.18, 0.65)
+		smoke.position = Vector3(x_off, 1.0, -0.5)
+		torso.add_child(smoke)
+		
+	# 2. Dual Gatling Sponsons
 	var left_arm = MeshInstance3D.new()
 	var la_box = BoxMesh.new()
 	la_box.size = Vector3(0.45, 0.5, 0.9)
@@ -540,11 +569,8 @@ func _build_giant_mech_model() -> void:
 	left_muzzle_light.omni_range = 8.0
 	left_muzzle.add_child(left_muzzle_light)
 	
-	# Right Sponson: Heavy Twin Plasma Cannon
 	var right_arm = MeshInstance3D.new()
-	var ra_box = BoxMesh.new()
-	ra_box.size = Vector3(0.45, 0.5, 0.9)
-	right_arm.mesh = ra_box
+	right_arm.mesh = la_box
 	right_arm.position = Vector3(1.15, 0.05, 0.2)
 	right_arm.material_override = armor_mat
 	torso.add_child(right_arm)
@@ -576,7 +602,7 @@ func _build_giant_mech_model() -> void:
 	right_muzzle_light.omni_range = 8.0
 	right_muzzle.add_child(right_muzzle_light)
 	
-	# Shoulder Missile Pod Racks (Loaded with 4 warheads)
+	# Shoulder Missile Pod Racks (4 warheads)
 	var pod_l = MeshInstance3D.new()
 	var p_box = BoxMesh.new()
 	p_box.size = Vector3(0.65, 0.45, 0.8)
@@ -591,7 +617,7 @@ func _build_giant_mech_model() -> void:
 	pod_r.material_override = steel_mat
 	torso.add_child(pod_r)
 	
-	# Boss Crown Pod
+	# Boss Crown
 	if bot_type == "boss":
 		var crown = MeshInstance3D.new()
 		var cr_box = BoxMesh.new()
@@ -602,12 +628,17 @@ func _build_giant_mech_model() -> void:
 		torso.add_child(crown)
 
 	# 3. Massive Reverse-Joint Hydraulic Legs
-	left_leg = _create_heavy_leg(Vector3(-0.65, 1.0, 0), armor_mat, steel_mat, piston_mat)
-	right_leg = _create_heavy_leg(Vector3(0.65, 1.0, 0), armor_mat, steel_mat, piston_mat)
+	var leg_left_data = _create_heavy_leg(Vector3(-0.65, 1.0, 0), armor_mat, steel_mat, piston_mat)
+	left_leg = leg_left_data[0]
+	left_piston = leg_left_data[1]
 	add_child(left_leg)
+	
+	var leg_right_data = _create_heavy_leg(Vector3(0.65, 1.0, 0), armor_mat, steel_mat, piston_mat)
+	right_leg = leg_right_data[0]
+	right_piston = leg_right_data[1]
 	add_child(right_leg)
 	
-	# EMP Stun Blue Lightning Sparks
+	# EMP Stun Sparks
 	stun_sparks = CPUParticles3D.new()
 	stun_sparks.emitting = false
 	stun_sparks.amount = 35
@@ -624,10 +655,10 @@ func _build_giant_mech_model() -> void:
 	health_label.text = "[ %s TITAN: 100%% ]" % bot_type.to_upper()
 	health_label.modulate = Color(1.0, 0.75, 0.2)
 	health_label.outline_modulate = Color(0.1, 0.05, 0.0)
-	health_label.outline_size = 6
-	health_label.font_size = 28
+	health_label.outline_size = 8
+	health_label.font_size = 38
 	health_label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	health_label.position = Vector3(0, 3.2, 0)
+	health_label.position = Vector3(0, 3.8, 0)
 	add_child(health_label)
 	
 	# 3D Reprogram Prompt
@@ -635,14 +666,14 @@ func _build_giant_mech_model() -> void:
 	prompt_label.text = "⚡ HOLD [E] // REPROGRAM SQUAD ALLIANCE"
 	prompt_label.modulate = Color(0.0, 1.0, 0.6)
 	prompt_label.outline_modulate = Color(0.0, 0.2, 0.1)
-	prompt_label.outline_size = 7
-	prompt_label.font_size = 30
+	prompt_label.outline_size = 8
+	prompt_label.font_size = 36
 	prompt_label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	prompt_label.position = Vector3(0, 3.7, 0)
+	prompt_label.position = Vector3(0, 4.4, 0)
 	prompt_label.visible = false
 	add_child(prompt_label)
 
-func _create_heavy_leg(pos: Vector3, armor_mat: Material, steel_mat: Material, piston_mat: Material) -> Node3D:
+func _create_heavy_leg(pos: Vector3, armor_mat: Material, steel_mat: Material, piston_mat: Material) -> Array:
 	var leg_root = Node3D.new()
 	leg_root.position = pos
 	
@@ -684,7 +715,7 @@ func _create_heavy_leg(pos: Vector3, armor_mat: Material, steel_mat: Material, p
 	shin.material_override = armor_mat
 	leg_root.add_child(shin)
 	
-	# Massive 3-Toed Steel Foot Clad
+	# 3-Toed Steel Foot Clad
 	var foot = MeshInstance3D.new()
 	var f_box = BoxMesh.new()
 	f_box.size = Vector3(0.55, 0.22, 0.85)
@@ -693,4 +724,4 @@ func _create_heavy_leg(pos: Vector3, armor_mat: Material, steel_mat: Material, p
 	foot.material_override = steel_mat
 	leg_root.add_child(foot)
 	
-	return leg_root
+	return [leg_root, piston]

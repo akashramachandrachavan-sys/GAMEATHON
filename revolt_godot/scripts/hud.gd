@@ -1,15 +1,18 @@
 extends CanvasLayer
 
 # RoboCop / Cyberpunk Holographic Mech HUD
-# Direct homage to user reference images with telemetry, crosshairs, wireframe mech,
-# heat gauges, EMP cooldown, comms chatter, and alliance squad counters.
+# Telemetry, crosshairs, shields, vitality, heat gauge, active weapons, and squad alliance.
 
+@onready var shield_bar: ProgressBar = $BottomLeft/Panel/HBox/VBox/ShieldBar
+@onready var shield_val: Label = $BottomLeft/Panel/HBox/VBox/ShieldHBox/ShieldVal
 @onready var health_bar: ProgressBar = $BottomLeft/Panel/HBox/VBox/HealthBar
 @onready var health_val: Label = $BottomLeft/Panel/HBox/VBox/HeaderHBox/HealthVal
+@onready var sub_info: Label = $BottomLeft/Panel/HBox/VBox/SubInfo
+@onready var weapon_tag: Label = $BottomRight/Panel/VBox/WeaponTag
 @onready var heat_bar: ProgressBar = $BottomRight/Panel/VBox/HeatBar
 @onready var heat_val: Label = $BottomRight/Panel/VBox/HBox/HeatVal
-@onready var emp_bar: ProgressBar = $BottomRight/Panel/VBox/EMPBar
 @onready var emp_status_lbl: Label = $BottomRight/Panel/VBox/EMPStatus
+@onready var overclock_status: Label = $BottomRight/Panel/VBox/OverclockStatus
 @onready var wave_title: Label = $TopCenter/Panel/VBox/WaveTitle
 @onready var wave_subtitle: Label = $TopCenter/Panel/VBox/WaveSubtitle
 @onready var ally_count_lbl: Label = $TopRight/Panel/VBox/AllyCount
@@ -25,7 +28,7 @@ var comms_timer: float = 0.0
 func _ready() -> void:
 	hack_bar.visible = false
 	hack_label.visible = false
-	show_comms("MAYA // TACTICAL OVERRIDE", "Kai! Rogue robots have broken containment. Use EMP [Q] to stun them and [E] to reprogram!", 7.0)
+	show_comms("MAYA // TACTICAL OVERRIDE", "Kai! A massive Goliath Enforcer is inbound. Switch weapons with [1/2/3], use your Shield, and trigger Overclock with [F]!", 7.5)
 
 func _process(delta: float) -> void:
 	if comms_timer > 0.0:
@@ -35,15 +38,33 @@ func _process(delta: float) -> void:
 	else:
 		comms_panel.modulate.a = lerp(comms_panel.modulate.a, 0.0, 5.0 * delta)
 
+func update_shield(current: float, max_val: float) -> void:
+	if not is_instance_valid(shield_bar): return
+	var pct = clamp((current / max_val) * 100.0, 0.0, 100.0)
+	shield_bar.value = pct
+	shield_val.text = "%d / %d" % [int(current), int(max_val)]
+	if pct <= 0.0:
+		shield_bar.modulate = Color(1.0, 0.2, 0.2)
+	else:
+		shield_bar.modulate = Color(0.0, 0.85, 1.0)
+
 func update_health(current: float, max_val: float) -> void:
 	if not is_instance_valid(health_bar): return
 	var pct = clamp((current / max_val) * 100.0, 0.0, 100.0)
 	health_bar.value = pct
-	health_val.text = "%d%%" % int(pct)
+	health_val.text = "%d / %d" % [int(current), int(max_val)]
 	if pct < 30.0:
 		health_bar.modulate = Color(1.0, 0.2, 0.2)
 	else:
 		health_bar.modulate = Color(0.0, 1.0, 0.55)
+
+func update_stims(count: int) -> void:
+	if not is_instance_valid(sub_info): return
+	sub_info.text = "SUIT: CYBER-VEST // STIMS [C]: %d READY" % count
+
+func update_weapon(weapon_name: String) -> void:
+	if not is_instance_valid(weapon_tag): return
+	weapon_tag.text = "WEAPON: " + weapon_name
 
 func update_heat(current: float, max_val: float) -> void:
 	if not is_instance_valid(heat_bar): return
@@ -58,19 +79,23 @@ func update_heat(current: float, max_val: float) -> void:
 	else:
 		heat_bar.modulate = Color(0.0, 1.0, 0.55)
 
-func update_emp(current_cooldown: float, max_cooldown: float) -> void:
-	if not is_instance_valid(emp_bar): return
+func update_emp(current_cooldown: float, _max_cooldown: float) -> void:
+	if not is_instance_valid(emp_status_lbl): return
 	if current_cooldown <= 0.0:
-		emp_bar.value = 100.0
-		emp_bar.modulate = Color(0.0, 1.0, 0.6)
 		emp_status_lbl.text = "EMP DISRUPTOR: READY [Q / RMB]"
 		emp_status_lbl.modulate = Color(0.0, 1.0, 0.6)
 	else:
-		var pct = (1.0 - current_cooldown / max_cooldown) * 100.0
-		emp_bar.value = pct
-		emp_bar.modulate = Color(0.3, 0.7, 1.0)
 		emp_status_lbl.text = "EMP RECHARGING: %.1fs" % current_cooldown
 		emp_status_lbl.modulate = Color(0.5, 0.8, 1.0)
+
+func update_overclock(is_ready: bool, remaining_cd: float) -> void:
+	if not is_instance_valid(overclock_status): return
+	if is_ready:
+		overclock_status.text = "OVERCLOCK [F]: READY (BULLET TIME)"
+		overclock_status.modulate = Color(0.2, 0.9, 1.0)
+	else:
+		overclock_status.text = "OVERCLOCK COOLDOWN: %.1fs" % remaining_cd
+		overclock_status.modulate = Color(0.5, 0.6, 0.7)
 
 func update_reprogram_progress(prog: float) -> void:
 	if not is_instance_valid(hack_bar): return
