@@ -63,7 +63,7 @@ func update_emp(current_cooldown: float, max_cooldown: float) -> void:
 	if current_cooldown <= 0.0:
 		emp_bar.value = 100.0
 		emp_bar.modulate = Color(0.0, 1.0, 0.6)
-		emp_status_lbl.text = "EMP SHOCK: READY [Q / RMB]"
+		emp_status_lbl.text = "EMP DISRUPTOR: READY [Q / RMB]"
 		emp_status_lbl.modulate = Color(0.0, 1.0, 0.6)
 	else:
 		var pct = (1.0 - current_cooldown / max_cooldown) * 100.0

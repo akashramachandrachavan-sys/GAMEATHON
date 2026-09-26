@@ -2,7 +2,7 @@
 
 [ext_resource type="Script" path="res://scripts/hud.gd" id="1_hud"]
 [ext_resource type="Texture2D" path="res://assets/hud_reticle.png" id="2_reticle"]
-[ext_resource type="Texture2D" path="res://assets/mech_schematic.png" id="3_schematic"]
+[ext_resource type="Texture2D" path="res://assets/kai_avatar.png" id="3_schematic"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_hud_panel"]
 bg_color = Color(0.02, 0.05, 0.08, 0.6)
@@ -106,7 +106,7 @@ layout_mode = 2
 size_flags_horizontal = 3
 theme_override_colors/font_color = Color(0, 1, 0.55, 1)
 theme_override_font_sizes/font_size = 13
-text = "ED-209 // KAI VANGUARD"
+text = "KAI // TEEN RESISTANCE"
 
 [node name="HealthVal" type="Label" parent="BottomLeft/Panel/HBox/VBox/HeaderHBox"]
 layout_mode = 2
@@ -126,7 +126,7 @@ show_percentage = false
 layout_mode = 2
 theme_override_colors/font_color = Color(0.4, 0.8, 0.6, 1)
 theme_override_font_sizes/font_size = 11
-text = "ARMOR: TITANIUM-9 // THRUSTERS: ACTIVE"
+text = "SUIT: CYBER-VEST // WEAPON: EMP PULSE RIFLE"
 
 [node name="BottomRight" type="MarginContainer" parent="."]
 anchors_preset = 3
@@ -157,7 +157,7 @@ layout_mode = 2
 size_flags_horizontal = 3
 theme_override_colors/font_color = Color(0, 1, 0.55, 1)
 theme_override_font_sizes/font_size = 13
-text = "MACHINE GUN // HEAT GAUGE"
+text = "PULSE RIFLE // HEAT GAUGE"
 
 [node name="HeatVal" type="Label" parent="BottomRight/Panel/VBox/HBox"]
 layout_mode = 2
@@ -177,7 +177,7 @@ show_percentage = false
 layout_mode = 2
 theme_override_colors/font_color = Color(0, 1, 0.55, 1)
 theme_override_font_sizes/font_size = 12
-text = "EMP SHOCK: READY [Q / RMB]"
+text = "EMP DISRUPTOR: READY [Q / RMB]"
 
 [node name="EMPBar" type="ProgressBar" parent="BottomRight/Panel/VBox"]
 custom_minimum_size = Vector2(0, 10)

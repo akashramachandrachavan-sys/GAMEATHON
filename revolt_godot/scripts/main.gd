@@ -87,13 +87,13 @@ func _start_gameplay() -> void:
 	hud = hud_scene.instantiate()
 	add_child(hud)
 	
-	# Spawn Player Mech in Kai's corner
+	# Spawn Teen Hero Kai in the open testing plaza
 	var player_script = load("res://scripts/player_mech.gd")
 	player = CharacterBody3D.new()
 	player.set_script(player_script)
 	player.add_to_group("player")
 	add_child(player)
-	player.global_position = Vector3(0, 0.5, 12.0)
+	player.global_position = Vector3(0, 0.5, 22.0)
 	
 	# Connect Player Signals to HUD
 	player.health_changed.connect(hud.update_health)
@@ -114,36 +114,38 @@ func _start_wave(wave_num: int) -> void:
 	
 	match wave_num:
 		1:
-			subtitle = "CLEANING UNITS OVERRIDDEN // PURGE OR REPROGRAM"
-			comms_msg = "Kai! Stun those rogue droids with EMP [Q], then hold [E] up close to reprogram them into allies!"
-			hud.set_wave(1, "SECTOR ALERT // WAVE 1", subtitle)
+			subtitle = "ROGUE BATTLE DROIDS // PURGE OR REPROGRAM"
+			comms_msg = "Kai! Malfunctioning robots have overrun the open testing grounds! Stun them with your EMP [Q] and hold [E] to reprogram!"
+			hud.set_wave(1, "OPEN SECTOR // WAVE 1", subtitle)
 			hud.show_comms("MAYA // TACTICAL OVERRIDE", comms_msg, 7.0)
 			_spawn_wave_enemies(4, 0, false)
 		2:
-			subtitle = "HEAVY ENFORCERS DETECTED // REPROGRAM FOR FLANK SUPPORT"
-			comms_msg = "Heavy bruisers inbound! Having an allied bot squad will absorb their minigun fire!"
-			hud.set_wave(2, "SECTOR ALERT // WAVE 2", subtitle)
+			subtitle = "HEAVY BRUISER ENFORCERS // REPROGRAM FOR FIRE SUPPORT"
+			comms_msg = "Heavy bruiser mechs inbound across the courtyard! Use cargo containers for cover and recruit an ally squad!"
+			hud.set_wave(2, "OPEN SECTOR // WAVE 2", subtitle)
 			hud.show_comms("JAX // HEAVY MUNITIONS", comms_msg, 7.0)
-			_spawn_wave_enemies(3, 2, false)
+			_spawn_wave_enemies(4, 2, false)
 		3:
-			subtitle = "TITAN DETECTED // OMEGA-ZERO HAS ENTERED THE ARENA!"
-			comms_msg = "WARNING! Omega-Zero has breached the ring! All units, focus fire on the Titan!"
+			subtitle = "TITAN OMEGA-ZERO // MASSIVE THREAT DETECTED!"
+			comms_msg = "CRITICAL ALERT! Omega-Zero has breached the open sector! Coordinate fire with your allied robot squad!"
 			hud.set_wave(3, "CRITICAL ALERT // WAVE 3", subtitle)
 			hud.show_comms("MAYA // EMERGENCY", comms_msg, 8.0)
-			_spawn_wave_enemies(2, 1, true)
+			_spawn_wave_enemies(3, 2, true)
 
 func _spawn_wave_enemies(grunts: int, bruisers: int, has_boss: bool) -> void:
 	enemies_remaining = grunts + bruisers + (1 if has_boss else 0)
 	var enemy_script = load("res://scripts/enemy_mech.gd")
 	
 	var spawn_points = [
-		Vector3(-12, 0.5, -10),
-		Vector3(12, 0.5, -10),
-		Vector3(0, 0.5, -14),
-		Vector3(-8, 0.5, -6),
-		Vector3(8, 0.5, -6),
-		Vector3(-14, 0.5, 0),
-		Vector3(14, 0.5, 0)
+		Vector3(-25, 0.5, -25),
+		Vector3(25, 0.5, -25),
+		Vector3(0, 0.5, -30),
+		Vector3(-28, 0.5, 0),
+		Vector3(28, 0.5, 0),
+		Vector3(-18, 0.5, -15),
+		Vector3(18, 0.5, -15),
+		Vector3(-10, 0.5, -22),
+		Vector3(10, 0.5, -22)
 	]
 	spawn_points.shuffle()
 	
